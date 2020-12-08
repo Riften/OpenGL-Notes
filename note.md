@@ -13,6 +13,7 @@ blog 中提到了包括上面原因的两个 piglit 测试失败的愿意：
 - [mesa master git](https://gitlab.freedesktop.org/mesa/mesa)
 - [mesa mike git](https://gitlab.freedesktop.org/zmike/mesa/-/tree/zink-wip)
 - [mesa mainpage](http://mesa.sourceforge.net/index.html)
+- [apitrace 及其替代工具](http://apitrace.github.io/)
 
 ## 常用指令
 ### 编译RST文档
