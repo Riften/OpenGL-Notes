@@ -14,6 +14,7 @@ blog 中提到了包括上面原因的两个 piglit 测试失败的愿意：
 - [mesa mike git](https://gitlab.freedesktop.org/zmike/mesa/-/tree/zink-wip)
 - [mesa mainpage](http://mesa.sourceforge.net/index.html)
 - [apitrace 及其替代工具](http://apitrace.github.io/)
+- [一篇介绍zink 和 vulkan 的博客](https://www.collabora.com/news-and-blog/blog/2018/10/31/introducing-zink-opengl-implementation-vulkan/)
 
 ## 常用指令
 ### 编译RST文档
@@ -89,3 +90,28 @@ sudo rm /var/lib/dpkg/info -r
 #重新设为info
 sudo mv /var/lib/dpkg/baks /var/lib/dpkg/info
 ```
+
+## 测试工具
+### apitrace
+生成trace
+```bash
+apitrace trace -o 输出文件名.trace 要执行的OpenGL程序以及其参数
+```
+
+查看trace
+```bash
+qapitrace 文件名.trace
+```
+
+生成profile文件
+```bash
+qapitrace --pcpu --pgpu --ppd replay 文件名.trace > 文件名.profile
+```
+用`replay`命令查看运行情况，统计cpu、gpu运行时间以及像素绘制数量等参数。需要注意的是，这部分信息并不在trace文件中，`replay`命令是通过按照trace文件内容重新运行每个接口，才得到了分析结果。
+
+目前发现有个现象是`replay`结果普遍比实际运行差，某次运行的对比如下
+
+- |zink | 硬件驱动
+- | - | -
+运行时帧数 | 1399 | 4252
+replay帧数 | 398 | 2122

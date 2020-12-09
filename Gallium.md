@@ -43,6 +43,8 @@ OpenGL SHading Language，是用于编写GPU程序的语言。
 
 Shader 的使用使得程序员编写 OpenGL 程序的时候，可以参与到渲染管线的设计中，精确控制对象的表现细节。
 
+在`Gallium`架构中，GLSL被新的着色器编程语言TGSI替代。
+
 ## Pipe Driver
 
 ## 调试环境变量

@@ -3,6 +3,22 @@
 - [代码Github](https://github.com/paroj/gltut)
 - (说什么不需要下载别的东西就可以运行教程代码纯属放屁，需要下载并编译GLSDK的lib文件)
 
+教程代码编译方式：
+
+把`GLSDK`放到`gltut/glsdk`目录，然后分别在`glsdk`目录运行
+```bash
+premake4 vs2010
+```
+然后通过VS项目打开`glsdk`并且`生成解决方案`。这样我们就有了教程所依赖的轻量级`opengl`库。
+
+然后在`gltut`根目录也一样运行
+```bash
+premake4 vs2010
+```
+为每个项目生成解决方案。
+
+运行每一节代码的时候，需要通过`解决方案资源管理器`把对应那一节的项目`设为启动项目`。另外，修改了代码需要重新编译的时候需要手动删除`.pdb`文件。
+
 # Graphic and Rendering
 Rendering（渲染）和 Rasterization（光栅化）：渲染指的是从3D场景到2D图片转化的过程，而光栅化是图形硬件通常使用的渲染方式，通过大量模拟、近似来达到实时渲染。用来进行光栅化的模块被称为 Rasterizer 光栅器。
 
@@ -112,3 +128,54 @@ glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 ```
 
 可以看到这段代码依然遵循 OpenGL 的基本规则，想要对对象进行任何操作，先把它 bind 到状态机上。`glVertexAttrbPointer`是实际发挥作用的函数，告诉 OpenGL 怎么解释 `GL_ARRAY_BUFFER` 中的数据。
+
+需要注意的是，接口`glVertexAttribPointer`总是负责解释`GL_ARRAY_BUFFER`中的内容含义，这也是为什么这个接口没有 buffer 类型的参数。类似操作在 OpenGL 中广泛存在，即先设好钩子，后续操作直接对事先设置的钩子进行操作。这种设计让 OpenGL 作为一个状态机更加严谨，允许程序员进行的操作实际上更加确定，写出来的程序也更加标准化。不过这也造成了 OpenGL 难以采用多线程编程。
+
+## 绘制
+最终负责绘制的代码是
+
+```cpp
+glDrawArrays(GL_TRIANGLES, 0, 3);
+```
+
+两个参数分别是起始 index 和顶点数量，而后端读取的方式就按照`glVertexAttribPointer`中设置的那样去读取。
+
+## 顶点处理和着色器 Vertex Processing and Shaders
+shader即运行在GPU中的程序，它有以下特性
+- 运行在GPU
+- 相互独立，每个着色器有自己的输入和输出，着色器之间没有互相调用。
+- 可编程，在OpenGL中通过专门的语言 OpenGL Shading Language (GLSL) 进行编写。
+
+常用的 Shader 有 Vertex Shader （计算顶点坐标），Fragment Shader （计算Fragment颜色）
+
+## 光栅化 Rasterization
+
+# Chapter 2. Playing with Colors
+
+这一章简单说就是通过前面提到的 Fragment Shader 来为 Fragment 计算颜色。
+
+## 基于 Fragment 位置来着色
+本例中使用的 Fragment Shader 是
+```GLSL
+#version 330
+
+out vec4 outputColor;
+
+void main()
+{
+    float lerpValue = gl_FragCoord.y / 500.0f;
+    
+    outputColor = mix(vec4(1.0f, 1.0f, 1.0f, 1.0f),
+        vec4(0.2f, 0.2f, 0.2f, 1.0f), lerpValue);
+}
+```
+
+其中`gl_FragCoord`是一个存放了XYZ坐标的内置变量，在 Fragment Shader 运行时它的值将会是渲染位置的坐标。除了500是因为窗口的默认高度是500。500不会随着窗口尺寸变化而变化，所以会有一个有趣的现象，就是改变窗口尺寸的时候，三角形颜色也会有变化。
+
+`mix`是GLSL提供的标准函数之一，为了完成着色器工作，GLSL提供了海量的类似函数。
+
+![结果](imgs/tut02_1.png)
+
+![结果2](imgs/tut02_2.png)
+
+## 基于Vertex Attribute来着色
