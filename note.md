@@ -15,6 +15,8 @@ blog 中提到了包括上面原因的两个 piglit 测试失败的愿意：
 - [mesa mainpage](http://mesa.sourceforge.net/index.html)
 - [apitrace 及其替代工具](http://apitrace.github.io/)
 - [一篇介绍zink 和 vulkan 的博客](https://www.collabora.com/news-and-blog/blog/2018/10/31/introducing-zink-opengl-implementation-vulkan/)
+- [Aiglx学习总结](https://blog.csdn.net/hustwarhd/article/details/1907364?%3E)
+- [介绍glx的很丑陋的博客](https://blog.csdn.net/eydwyz/article/details/107099072)
 
 ## 常用指令
 ### 编译RST文档
@@ -105,7 +107,7 @@ qapitrace 文件名.trace
 
 生成profile文件
 ```bash
-qapitrace --pcpu --pgpu --ppd replay 文件名.trace > 文件名.profile
+apitrace replay --pcpu --pgpu --ppd 文件名.trace > 文件名.profile
 ```
 用`replay`命令查看运行情况，统计cpu、gpu运行时间以及像素绘制数量等参数。需要注意的是，这部分信息并不在trace文件中，`replay`命令是通过按照trace文件内容重新运行每个接口，才得到了分析结果。
 
@@ -115,3 +117,48 @@ qapitrace --pcpu --pgpu --ppd replay 文件名.trace > 文件名.profile
 - | - | -
 运行时帧数 | 1399 | 4252
 replay帧数 | 398 | 2122
+
+## 关于 GLX
+### X Window
+是linux下最流行的窗口系统，它采用客户/服务器模式。所有的资源（屏幕、字体、window、gc等）都由服务器来管理，客户端唯一所能做的就是请求服务器做某些操作，如画一条直线，创建窗口等。
+
+X Window 主要分为3部分：客户端、协议和服务器。所有基于X的程序都可以看成是一个客户端，该程序可以看成是命令集，这些命令通过协议发送到服务器，服务器根据协议定义的格式解析这些命令，然后按照命令去执行相应的操作。
+
+### GLX
+应用程序作为Client，将对OpenGL的调用通过GLX协议将接口函数发送到X Server，X Server解析之后调用Mesa来满足Client请求，将绘制结果输出到屏幕。
+
+GLX 是 X Window 的 OpenGL 扩展，实现了 X Client/Server 发送、解析并执行 OpenGL 请求的功能，GLX 并不实现3D效果的渲染，而是实现了OpenGL的接口和对MESA的调用。
+
+![GLX架构图](imgs/aiglx.bmp)
+
+# 从功能角度分析 GLX-ST-ZINK-Vulkan架构
+
+## 架构需要实现的功能包括
+- 初始化，context的创建、设备和驱动的关联、设备参数读取、渲染和指令缓冲创建。
+- 着色器编译实现
+- 绘图指令实现
+- 帧缓冲区管理
+
+## 初始化
+![初始化](imgs/Mesa_FW_Init.png)
+
+## 着色器的编译
+着色器通常使用 Internal Representation (IR) 来编写，在我们的架构中，问题的复杂性在于有好多种IR
+- GLSL：给程序员用的，直接在OpenGL程序中编写的IR
+- NIR：OpenGL着色器编译的目标代码，是GPU驱动可以直接使用的指令。
+- SPIR-V：Vulkan使用的IR，Vulkan的目标是替代OpenGL，SPIR-V就是与GLSL对应的IR。
+
+Zink的定位是MESA和Vulkan之间的translator，所以Zink的着色器输入是NIR，而输出是Vulkan的输入SPIR-V，结果就是整个着色器编译过程中，发生了反复的正向和反向的编译：
+```
+应用（GLSL）
+Mesa（GLSL -> NIR）
+Zink（NIR -> SPIR-V）
+Vulkan（SPIR-V -> NIR）
+```
+  
+### GLuint glutil::CompileShader(shader类型, GLSL程序)
+- 功能：编译GLSL IR（internal representation）编写的着色器
+- 通过dispatch调用到`mesa/src/mesa/main/shaderapi.c`中实现的函数，包括
+  - `GLuint GLAPIENTRY _mesa_CreateShader(GLenum type)`
+  - `void GLAPIENTRY _mesa_CompileShader(GLuint shaderObj)`
+
