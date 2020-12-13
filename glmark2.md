@@ -23,25 +23,37 @@ glmark2架构总体非常简单，`src`目录下文件包含了核心基类和�
 
 执行过程中，实际的测试运行是通过`Scene.draw()`，其他大多数是框架代码，所以需要分析的只是每个`scene-xxx.cpp`中的`draw()`函数实现。
 
+## 场景列表
+build, texture, shading, bump, effect2d, pulsar, desktop, buffer, ideas, jullyfish
+
 ## Scene: build
+是最简单的渲染场景，加载单个无文理模型，单点光源，模型颜色为白色，不透明，漫反射颜色直接用法向乘光线方向得到。
+
 ### 可选参数
 - use-vbo: 默认true
 - interleave: 默认false，Whether to interleave vertex attribute data
 - model: 默认horse
 
 ### setup()
-加载shader:
-- Vertex Shader: /shaders/light-basic.vert
-- Frame Shader: /shaders/light-basic.frag
+加载shader，编译shader，组装并使用program:
+- Vertex Shader /shaders/light-basic.vert: 基本的点光源漫反射，顶点颜色=材质颜色*$(N\cdot L)$
+- Frame Shader /shaders/light-basic.frag: 
 
 加载模型
+- Model data/models/horse.3ds: 只加载了顶点和法线信息
+- Texture 无
 
-调用GL接口包括：
-- 
+<details>
+<summary>模型查看</summary>
+
+![horse](imgs/glmark2_model_horse.png)
+</details>
+
 ### draw()
+根据旋转值调整viewpoint，根据是否使用`vbo`决定是否通过`glBindBuffer`绑定vbo对象，然后调用`glDrawArrays`绘图。
 
 ### update()
-
+更新旋转值
 
 ## TODO
 - 啥叫interleave vertex attribute data?
