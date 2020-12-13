@@ -1,0 +1,105 @@
+GLMARK2(1)                            General Commands Manual                           GLMARK2(1)
+
+NAME
+       glmark2 - OpenGL (ES) 2.0 benchmark suite
+
+SYNOPSIS
+       glmark2 [options]
+
+DESCRIPTION
+       glmark2  is  a benchmark for OpenGL (ES) 2.0. It only uses the subset of the OpenGL 2.0 API
+       that is compatible with OpenGL ES 2.0.
+
+OPTIONS
+       -b, --benchmark BENCH
+              A benchmark to run: 'scene(:opt1=val1)*' (the option can be used multiple times)
+
+       -f, --benchmark-file FILE
+              Load benchmarks to run from a file containing a list of benchmark descriptions  (one
+              per line) (the option can be used multiple times)
+
+       --validate
+              Run a quick output validation test instead of running the benchmarks
+
+       --data-path PATH
+              Path to glmark2 models, shaders and textures
+
+       --frame-end METHOD
+              How to end a frame [default,none,swap,finish,readpixels]
+
+       --off-screen
+              Render to an off-screen surface
+
+       --visual-config
+              The  visual configuration to use for the rendering target: ´red=R:green=G:blue=B:al‐
+              pha=A:buffer=BUF'. The parameters may be defined in any order, and any  omitted  pa‐
+              rameters assume a default value of '1'
+
+       --reuse-context
+              Use a single context for all scenes (by default, each scene gets its own context)
+
+       -s, --size WxH
+              Size of the output window (default: 800x600)
+
+       --fullscreen
+              Run in fullscreen mode (equivalent to --size -1x-1)
+
+       -l, --list-scenes
+              Display information about the available scenes and their options
+
+       --show-all-options
+              Show  all  scene  option values used for benchmarks (only explicitly set options are
+              shown by default)
+
+       --run-forever
+              Run indefinitely, looping from the last benchmark back to the first
+
+       --annotate
+              Annotate the benchmarks with on-screen information (same  as  -b  :show-fps=true:ti‐
+              tle=#info#)
+
+       -d, --debug
+              Display debug messages
+
+       -h, --help
+              Display help
+
+BENCHMARKS
+       glmark2  offers  a  suite of scenes that can be used to measure many aspects of OpenGL (ES)
+       2.0 performance. The way in which each scene is rendered is configurable through a  set  of
+       options.  To  get  the  available  scenes  and their acceptable options you can use the -l,
+       --list-scenes command line option.
+
+       In glmark2, a benchmark is defined as a scene plus a set of option values.  You can specify
+       the  list  and order of the benchmarks to run by using the -b, --benchmark command line op‐
+       tion (possibly multiple times).  If no benchmarks are specified, a default  set  of  bench‐
+       marks  is used. If a benchmark option is not specified it assumes its default value (listed
+       with -l, --list-scenes).
+
+       As a special case, a benchmark description string is allowed to not contain  a  scene  name
+       (i.e. to start with ':'). In this case, any specified option values are used as the default
+       values for benchmarks following this description string.
+
+EXAMPLES
+       To run the default benchmarks:
+
+              glmark2
+
+       To run a benchmark using scene 'shading' with a 'duration' of '5.0' seconds and
+        'shading' of type 'phong':
+
+              glmark2 -b shading:duration=5.0:shading=phong
+
+       To run a series of benchmarks use the -b, --benchmark command line option multiple times:
+
+              glmark2 -b shading:duration=5.0 -b build:use-vbo=false -b texture
+
+       To set default option values for benchmarks:
+
+              glmark2 -b :duration=2.0 -b shading -b build -b :duration=5.0 -b texture
+
+AUTHOR
+       glmark2 was written by Alexandros Frantzis and Jesse Barker based on the original glmark by
+       Ben Smith.
+
+glmark2 2020.04                             April 2020                                  GLMARK2(1)
