@@ -19,6 +19,8 @@
 ninja -C build uninstall
 ```
 
+由于打点过程中使用到了后面编译得到的动态链接库，所以需要将动态链接库的头文件放到`glmark2/src/`下。另外为了让meson编译过程中能够找到libMesaTracer，需要在根目录和src目录下的meson.build中添加依赖项。
+
 glmark2 和 mesa 的 debug 版本编译方式是一致的，通过 meson 进行配置。
 ```bash
 meson build
