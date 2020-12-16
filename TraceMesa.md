@@ -37,3 +37,34 @@ meson configure build -D gallium-drivers=swrast,zink
 ```bash
 ninja -C build install
 ```
+
+### gdb调试
+运行 gdb 调试 glmark2
+```bash
+gdb glmark2
+```
+
+以下指令均在`gdb shell`内执行。
+
+运行程序
+```bash
+r arg1 arg2 ...
+# 如运行build场景
+r -b build
+```
+
+添加断点
+```bash
+b 函数名 # 函数名可以通过 func 或者 class::func 指定
+b 行号 # 默认为main的行号，可以通过 filename:linenum 指定特定文件特定行号
+```
+
+### 分析工具
+[github链接](https://github.com/Riften/goMesaTracer)
+
+使用go+cgo编写，主要考虑和设计包括：
+- 利用go语言对多线程的良好支持和对c语言的兼容性。
+- 编译成动态链接库供`mesa`和`glmark2`调用，能够方便的做到同时对`mesa`和`glmark2`打点分析。
+- 使用宏定义做到接口尽量简单（目前接口`cgoAddTrace(cgoType C.int)`只需要传入单个整型作为参数，整型值则有宏定义提供）。
+- 能够复用打点和分析的代码。
+- 使用多线程减少对mesa效率的影响。
