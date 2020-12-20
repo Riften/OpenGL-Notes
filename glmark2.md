@@ -24,7 +24,7 @@ glmark2架构总体非常简单，`src`目录下文件包含了核心基类和�
 执行过程中，实际的测试运行是通过`Scene.draw()`，其他大多数是框架代码，所以需要分析的只是每个`scene-xxx.cpp`中的`draw()`函数实现。
 
 ## 场景列表
-build, texture, shading, bump, effect2d, pulsar, desktop, buffer, ideas, jullyfish
+build, texture, shading, bump, effect2d, pulsar, desktop, buffer, ideas, jellyfish
 
 ## Scene: build
 是最简单的渲染场景，加载单个无文理模型，单点光源，模型颜色为白色，不透明，漫反射颜色直接用法向乘光线方向得到。
@@ -234,6 +234,172 @@ build, texture, shading, bump, effect2d, pulsar, desktop, buffer, ideas, jullyfi
 对每个quad加载modelViewProjectMatrix，如果启用了光照还得加载normalMatrix
 
 默认使用render_vbo
+
+## Scene: desktop
+主要测试透明物体的模糊效果和阴影效果
+
+### 可选参数
+- effect：场景使用的效果，默认为blur
+    - blur，使透明的window具有模糊效果
+    - shadow，使透明的window具有阴影效果
+- windows：场景中出现的移动窗口的个数，默认为4
+- window-size：场景中出现的移动窗口的大小，默认为0.35(0-0.5)
+- passes：effect passes的数量，默认为1
+- blur-radius：blur效果的半径（单位为像素），默认为5
+- separable：是否使用可分卷积实现blur效果，默认为true
+- shadow-size：阴影效果的大小，默认为20（单位为像素）
+
+### setup()
+设置透明效果
+
+分别对screen和desktop执行setup()，此步骤中调用多级init()，主要工作是创建FBO并绑定texture，进行shader加载
+- vertex shader：desktop.vert，主要工作是依次将将vec2转换为vec4，并设置z为0，阿尔法值为1
+- fragment shader
+    - blur效果：desktop-blur.frag， 使用卷积获得模糊效果
+    - shadow：desktop.frag， 进行texture坐标处理
+    
+创建场景中的窗口并设置移动速度，并使移动方向能偏转一定的角度，使得window不止在X或Y方向上移动
+
+### update()
+对每一个window根据其运动速度和方向进行位置的更新，并检测window是否到达边界处，如果已经到达边界处则改变速度方向使其调转
+
+### draw（）
+glClearColor()确保获得透明效果
+进行render渲染
+
+## Scene: buffer
+主要测试模型边缘抗锯齿效果
+
+### 可选参数
+- interleave：Whether to interleave vertex attribute data，默认false
+- update-method：vertex buffer obejct方法
+    - map
+    - subdata
+- update-fraction：每次画面更新的mesh长度百分比，默认为1（0.0 - 1.0)
+- update-dispersion：每次画面更新的分散程度，默认为0(0.0 - 1.0)
+- columns：纵向网格的细分数，默认为100
+- rows：横向网格的细分数，默认为20
+- buffer-usage：vertex buffer buffer的使用方式，默认为static
+    - static
+    - stream
+    - dynamic
+
+### setup()
+解析传入参数
+
+根据传入的网格信息创建wavemesh
+- 单个mesh长度和宽度默认为5，2
+- 加载shader
+    - buffer-wireframe.vert
+        - 计算出待处理点所处的三角形的三边向量
+        - 计算出当前点距三边的距离，传入fragment shader
+        - 这里先预乘pos.W，在fragment shader中再乘它的逆将此效果消除，原因是openGL执行的是perspective-correct interpolation（除pos.W)
+        但我们想要的是线性插值
+    - buffer-wireframe.frag: 某个位置像素的颜色是当前所属三角形颜色、距离最近的边线颜色和距边线距离的加权混合
+- 要依次向vertex shader传入当前待处理点的坐标和其所属的三角形网格三点的位置
+
+### draw()
+加载ModelViewProjectionMatrix
+
+使用render_vbo进行渲染
+
+## Scene:ideas
+主要测试多物体与移动光源场景的阴影渲染效果？
+
+### 可选参数
+- speed:场景运行速度，默认为duration
+    - duration: 将速度作为场景运行duration的函数，speed = (CYCLE_TIME_ - START_TIME_) / duration
+    - 1.0: wall clock
+    - \> 1.0: faster
+    - < 1.0: slower
+
+### setup()
+对场景中的各个物体（桌面、logo等）进行初始化（这些写在/src/scene-ideas文件夹下）
+- 初始化灯光位置
+- 初始化table
+    - 为渲染table的program加载shader，考虑灯光效果并随时间fade
+        - ideas-table.vert
+        - ideas-table.frag
+    - 为渲染paper的program加载shader，考虑灯光效果并随时间fade
+        - ideas-paper.vert
+        - ideas-paper.frag
+    - 为渲染texture的program加载shader，文本随时间而fade
+        - ideas-text.vert
+        - ideas-text.frag
+    - 为table以外背景着色的program加载shader，直接渲染为黑色
+        - ideas-under-table.vert
+        - ideas-under-table.frag
+    - 将文本的各个字母初始化（字母都是分别渲染的）
+    - 初始化vertex data buffer 和 index data buffer
+- 初始化logo
+    - 为渲染logo主体的program加载shader
+        - ideas-logo.vert
+        - ideas-logo.frag
+    - 为渲染logo平面部分的program加载shader
+        - ideas-logo-flat.vert
+        - ideas-logo-flat.frag
+    - 为渲染logo阴影部分的program加载shader
+        - ideas-logo-shadow.vert
+        - ideas-logo-shadow.frag
+    - 初始化vertex data buffer 和 index data buffer
+    - 初始化logo将使用的texture
+- 初始化light
+    - 为渲染灯光的program加载shader
+        - ideas-lamp-lit.vert
+        - ideas-lamp-lit.frag
+    - 加载无光照场景的shader
+        - ideas-lamp-unlit.vert
+        - ideas-lamp-unlit.frag
+    - 初始化vertex data buffer 和 index data buffer
+    
+
+重置时钟
+    
+依据传入参数设置speed，参数为duration时设置如上
+
+更新投影矩阵（此后每一帧更新均再执行update_projection）
+
+### update()
+更新时间和投影矩阵
+
+### draw()
+开始时先根据currentTime获取各object（包括桌面、灯光、logo等object）当前所应处于的位置
+
+根据灯光位置计算阴影效果并渲染
+
+依次调用各object的draw()进行相应的绘制，各object具体实现都在src/scene-ideas文件夹下
+
+## Scene: jellyfish
+主要测试Fresnel效果和颜色色散
+### 可选参数
+无
+
+### setup()
+加载水母模型：/models/jellyfish.jobj
+
+初始化dataMap（vertex data在缓冲区中的排布形式）
+
+加载shader
+- jellyfish.vert：顶点参数有位置、法向量、颜色、纹理坐标等信息，此外还有光照信息、当前时间等uniforms，顶点运动速度是当前时间的线性函数
+    - 计算顶点动画
+    - 计算漫反射效果
+    - 计算环境光（顶部）
+    - fresnel效果
+    - 纹理坐标
+- jellyfish.frag：像素颜色是环境光加漫反射加焦散效果加本身颜色加透明度的混合
+
+初始化vertex data buffer 和 index data buffer
+
+初始化纹理，包括主体纹理（jellyfish256）和caustics纹理（jellyfish-caustics-n）
+
+### update()
+更新viewport和时间信息（用于vertex shader中顶点动画）
+
+### draw()
+加载时间、光照信息（漫反射、环境光、Fresnel）、投影矩阵等全局参数，进行渲染
+
+
+
 
 
 
