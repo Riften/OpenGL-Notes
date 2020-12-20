@@ -23,6 +23,10 @@ glmark2架构总体非常简单，`src`目录下文件包含了核心基类和�
 
 执行过程中，实际的测试运行是通过`Scene.draw()`，其他大多数是框架代码，所以需要分析的只是每个`scene-xxx.cpp`中的`draw()`函数实现。
 
+## TODO
+- 啥叫interleave vertex attribute data?
+- 为什么glmark2是多线程运行的？
+
 ## 场景列表
 build, texture, shading, bump, effect2d, pulsar, desktop, buffer, ideas, jellyfish
 
@@ -54,9 +58,6 @@ build, texture, shading, bump, effect2d, pulsar, desktop, buffer, ideas, jellyfi
 
 ### update()
 更新旋转值
-
-## TODO
-- 啥叫interleave vertex attribute data?
 
 ## Scene: texture
 主要测试不同纹理滤波方法
