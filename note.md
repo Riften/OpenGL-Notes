@@ -13,10 +13,12 @@ blog 中提到了包括上面原因的两个 piglit 测试失败的愿意：
 - [mesa master git](https://gitlab.freedesktop.org/mesa/mesa)
 - [mesa mike git](https://gitlab.freedesktop.org/zmike/mesa/-/tree/zink-wip)
 - [mesa mainpage](http://mesa.sourceforge.net/index.html)
+- [mesa mike blog](http://www.supergoodcode.com/)
 - [apitrace 及其替代工具](http://apitrace.github.io/)
 - [一篇介绍zink 和 vulkan 的博客](https://www.collabora.com/news-and-blog/blog/2018/10/31/introducing-zink-opengl-implementation-vulkan/)
 - [Aiglx学习总结](https://blog.csdn.net/hustwarhd/article/details/1907364?%3E)
 - [介绍glx的很丑陋的博客](https://blog.csdn.net/eydwyz/article/details/107099072)
+- [OpenGL-Refpages Git 一个OpenGL文档](https://github.com/KhronosGroup/OpenGL-Refpages)
 
 ## 常用指令
 ### 编译RST文档
@@ -130,6 +132,11 @@ X Window 主要分为3部分：客户端、协议和服务器。所有基于X的
 GLX 是 X Window 的 OpenGL 扩展，实现了 X Client/Server 发送、解析并执行 OpenGL 请求的功能，GLX 并不实现3D效果的渲染，而是实现了OpenGL的接口和对MESA的调用。
 
 ![GLX架构图](imgs/aiglx.bmp)
+
+## 关于ARB
+很多OpenGL函数都会有后缀ARB，实际上这是 *Architecture Review Board* 的缩写。
+
+简单说，OpenGL的很多函数都是以扩展的形式第一次出现的，而有些扩展后来被发现非常有用，就会被ARB这个组织加上ARB这个标记，意思就是“我们看过了，很棒很不错，哪天可能加到OpenGL的核心特性里”。
 
 # 从功能角度分析 GLX-ST-ZINK-Vulkan架构
 

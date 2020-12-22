@@ -119,15 +119,137 @@ common_deps = [
         dependencies : [libMesaTracer, idep_nir_headers, idep_mesautil],
         build_by_default : false,
     )
+
+    # mesa-zink-12.5/src/mesa/drivers/x11/meson.build
+    libgl = shared_library(
+        'GL',
+        files(
+            'fakeglx.c', 'glxapi.c', 'xfonts.c', 'xm_api.c', 'xm_buffer.c', 'xm_dd.c',
+            'xm_line.c', 'xm_tri.c',
+        ),
+        include_directories : [
+            inc_include, inc_src, inc_mesa, inc_mapi, inc_gallium, inc_gallium_aux
+        ],
+        link_with : [libmesa_classic, libglapi_static, gl_link_with],
+        dependencies : [idep_mesautil, dep_x11, dep_xext, dep_xcb, dep_thread, libMesaTracer],
+        version : '1.6.0',
+        install : true,
+    )
+
+    # mesa-zink-12.5/src/glx/meson.build
+    libglx = static_library(
+        'glx',
+        [files_libglx, glx_generated],
+        include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_glapi, inc_loader],
+        c_args : [
+            gl_lib_cargs,
+            '-DGL_LIB_NAME="lib@0@.so.@1@"'.format(gl_lib_name, gl_lib_version.split('.')[0]),
+        ],
+        gnu_symbol_visibility : 'hidden',
+        link_with : [
+            libloader, libloader_dri3_helper,
+            extra_libs_libglx,
+        ],
+        dependencies : [
+            idep_mesautil, idep_xmlconfig,
+            dep_libdrm, dep_dri2proto, dep_glproto, dep_x11, dep_glvnd, libMesaTracer,
+        ],
+        )
+
+    libgl = shared_library(
+        gl_lib_name,
+        [],
+        link_with : [libglapi_static, libglapi],
+        link_whole : libglx,
+        link_args : [ld_args_bsymbolic, ld_args_gc_sections, extra_ld_args_libgl],
+        dependencies : [
+            dep_libdrm, dep_dl, dep_m, dep_thread, dep_x11, dep_xcb_glx, dep_xcb,
+            dep_x11_xcb, dep_xcb_dri2, dep_xext, dep_xfixes, dep_xdamage, dep_xxf86vm,
+            dep_xcb_shm, extra_deps_libgl, libMesaTracer,
+        ],
+        version : gl_lib_version,
+        install : true,
+    )
+
+    # /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/gallium/auxiliary/meson.build
+    libgallium = static_library(
+        'gallium',
+        [files_libgallium, u_indices_gen_c, u_unfilled_gen_c],
+        include_directories : [
+            inc_loader, inc_gallium, inc_src, inc_include, include_directories('util')
+        ],
+        c_args : [c_msvc_compat_args],
+        cpp_args : [cpp_msvc_compat_args],
+        gnu_symbol_visibility : 'hidden',
+        dependencies : [
+            dep_libdrm, dep_llvm, dep_dl, dep_m, dep_thread, dep_lmsensors,
+            idep_nir, idep_nir_headers, idep_mesautil, libMesaTracer,
+        ],
+        build_by_default : false
+    )
+
+    libgalliumvl_stub = static_library(
+        'galliumvl_stub',
+        'vl/vl_stubs.c',
+        c_args : [c_msvc_compat_args],
+        cpp_args : [cpp_msvc_compat_args],
+        gnu_symbol_visibility : 'hidden',
+        include_directories: [inc_gallium, inc_include, inc_src],
+        dependencies : [idep_mesautil, libMesaTracer],
+        build_by_default : false,
+    )
+
+    libgalliumvl = static_library(
+        'galliumvl',
+        files_libgalliumvl,
+        c_args : [c_msvc_compat_args],
+        cpp_args : [cpp_msvc_compat_args],
+        gnu_symbol_visibility : 'hidden',
+        include_directories : [inc_gallium, inc_include, inc_src],
+        dependencies : [idep_mesautil, libMesaTracer],
+        build_by_default : false,
+    )
+
+    libgalliumvlwinsys = static_library(
+        'galliumvlwinsys',
+        files_libgalliumvlwinsys,
+        include_directories : [inc_gallium, inc_include, inc_loader, inc_src],
+        dependencies : [dep_libdrm, vlwinsys_deps, idep_mesautil, libMesaTracer],
+        build_by_default : false,
+    )
+
+    # /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/gallium/frontends/dri/meson.build
+    libdri = static_library(
+        'dri',
+        files_libdri,
+        include_directories : [
+            inc_include, inc_util, inc_mesa, inc_mapi, inc_src, inc_gallium,
+            inc_gallium_aux, inc_dri_common,
+        ],
+        c_args : [libdri_c_args],
+        gnu_symbol_visibility : 'hidden',
+        dependencies : [
+            dep_libdrm,
+            idep_mesautil,
+            libMesaTracer,
+        ],
+    )
    ```
 
 3. 把头文件`libMesaTracer.h`加到它被调用的位置，当前它被加到了以下几个位置：
    
-   - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/mesa/main/libMesaTracer.h
+   - mesa-zink-12.5/src/mesa/main/libMesaTracer.h
+   - mesa-zink-12.5/src/mesa/state_tracker/libMesaTracer.h
+   - mesa-zink-12.5/src/mesa/drivers/x11/libMesaTracer.h
+   - mesa-zink-12.5/src/glx/libMesaTracer.h
+   - mesa-zink-12.5/src/gallium/auxiliary/util/libMesaTracer.h
+   <!--use util directly - mesa-zink-12.5/src/gallium/frontends/dri/libMesaTracer.h-->
 
     比起哪里需要挪到哪里，修改`meson.build`中的`include`选项可能是个更明智的方案，但在对`meson`编译工具理解有限的当前，还是希望尽量减少不必要的编译选项修改。
 
 4. 部分库会指定自己的源文件和头文件，这时候需要把`libMesaTracer.h`加到需要的列表里。当前加了`libMesaTracer.h`的源文件列表包括：
-   
    - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/mesa/meson.build: files_libmesa_common
+   - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/glx/meson.build: files_libglx
+   - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/gallium/auxiliary/meson.build: files_libgallium
+   <!-- - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/gallium/frontends/dri/meson.build: files_libdri -->
    

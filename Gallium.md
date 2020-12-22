@@ -1,3 +1,4 @@
+# Gallium
 ## 总览
 早在09年就已经提出，本质上是一个构建图形驱动程序的体系结构。
 
@@ -34,10 +35,10 @@ OpenGL 2.1 的 State Tracker
 - 使用了 OpenGL 的 Vertex Buffer Object（VBO），将 OpenGL 的绘图指令转化成 VBO 形式。
 - 最终以设备驱动的形式提供给上层，实现所有 ctx->Driver.Foobar() 钩子函数（src/mesa/state_tracker/）
 
-### 关于GLSL
+## 关于GLSL
 OpenGL SHading Language，是用于编写GPU程序的语言。
 
-渲染过程中，GPU 相当于 Server，而运行在 CPU 上的程序相当于 Client。为了让 Server 知道怎么处理你传给他的东西，需要提前上传你的 Shader 组件给 Server，这有点像提供一个 dll，从而让 Server 可以运行你之后希望调用的某个接口。
+渲染过程中，GPU 相当于 Server，而运行在 CPU 上的程序相当于 Client。为了让 Server 知道怎么处理你传给他的东西，需要提前上传你的 Shader 组件给 Server，这有点像提供一个 dll/so，从而让 Server 可以运行你之后希望调用的某个接口。
 
 早期是使用类似汇编语言的方式编写 Shader 的，Shader Language 就是在这基础上发展的高级语言。
 
