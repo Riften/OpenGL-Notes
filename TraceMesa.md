@@ -253,3 +253,5 @@ common_deps = [
    - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/gallium/auxiliary/meson.build: files_libgallium
    <!-- - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/gallium/frontends/dri/meson.build: files_libdri -->
    
+## ARB timer query
+OpenGL3.2支持的扩展，Mike在他的[这篇博客](http://www.supergoodcode.com/timestamps/)中提到了zink中对该扩展的实现，[扩展文档](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_timer_query.txt)介绍了该扩展作用和使用方法。

@@ -46,6 +46,11 @@ Shader 的使用使得程序员编写 OpenGL 程序的时候，可以参与到�
 
 在`Gallium`架构中，GLSL被新的着色器编程语言TGSI替代。
 
+## Barrier & Fence
+Barrier 本意为屏障，Fence 本意为栅栏。他们意思差不多，都是为了保证一些操作按特定顺序进行。之所以用屏障和栅栏这样的词语，是因为这种保序是以**在Barrier之前提交的指令必须保证先于在Barrier之后提交的指令执行**。
+
+一种常见的 Barrier 是 Memory Barrier，用来让多个CPU协同工作。
+
 ## Pipe Driver
 
 ## 调试环境变量
