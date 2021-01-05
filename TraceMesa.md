@@ -234,6 +234,15 @@ common_deps = [
             libMesaTracer,
         ],
     )
+
+    #/home/songyiran/MesaWorkspace/mesa-zink-12.5/src/gallium/drivers/zink/meson.build
+    libzink = static_library(
+        'zink',
+        [files_libzink, zink_device_info, zink_nir_algebraic_c],
+        gnu_symbol_visibility : 'hidden',
+        include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_vulkan_wsi, inc_vulkan_util],
+        dependencies: [dep_vulkan, idep_nir_headers, idep_mesautil, libMesaTracer],
+    )
    ```
 
 3. 把头文件`libMesaTracer.h`加到它被调用的位置，当前它被加到了以下几个位置：
@@ -243,6 +252,7 @@ common_deps = [
    - mesa-zink-12.5/src/mesa/drivers/x11/libMesaTracer.h
    - mesa-zink-12.5/src/glx/libMesaTracer.h
    - mesa-zink-12.5/src/gallium/auxiliary/util/libMesaTracer.h
+   - mesa-zink-12.5/src/gallium/drivers/zink/libMesaTracer.h
    <!--use util directly - mesa-zink-12.5/src/gallium/frontends/dri/libMesaTracer.h-->
 
     比起哪里需要挪到哪里，修改`meson.build`中的`include`选项可能是个更明智的方案，但在对`meson`编译工具理解有限的当前，还是希望尽量减少不必要的编译选项修改。
