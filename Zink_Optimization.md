@@ -1,0 +1,108 @@
+## 2020.7.19 Master分支 Merge Request !5970
+[Diffs](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/5970/diffs?diff_id=88719&start_sha=f50311dcc6cb71f75829d2edf16ab966f6deea94#fda2f3a4bf3b7336a48643fa923ec5415c3c51be_62_64)
+
+irc channel: `irc://irc.freenode.net/zink`
+
+主要修改内容：
+- 添加对vulkan中`VK_USE_PLATFORM_DIRECTFB_EXT`扩展的支持。[DirectFB Wikipedia](https://en.wikipedia.org/wiki/DirectFB)，核心在于添加了`include/vulkan/vulkan_directfb.h`
+- 在`src/gallium/drivers/zink/zink_draw.c`的`draw_vbo`函数中添加了对`zink_batch_reference_program`的调用，后续更新中换成了`zink_batch_reference_resource_rw`
+
+## 2020.10.16 Master分支 Merge Request !7193
+[Diffs](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/7193/diffs)
+
+主要修改内容：
+- 添加对shader key的支持
+
+### src/gallium/drivers/zink/zink_compiler.c
+- 核心函数`zink_shader_compile`
+- 功能：将`nir` shader编译成`spir-v` shader，存入缓存文件中，并返回[VkShaderModule](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkShaderModule.html)对象。
+- 注意：Vulkan的IR输入为 spir-v，且不开放直接输入 nir 的接口。OpenGL 的 IR 输出为 nir，且 zink 作为软件驱动层，自然也已 nir 作为 IR 输入，这是 OpenGL 和 Gallium 架构决定的。spir-v 本身是 GLSL 同级的可读高级 IR 语言，所以这里会将结果直接写入缓存文件以供 Vulkan 的渲染管线使用，而不是提交硬件。
+
+为`zink_shader_compile`函数增加`zink_shader_key`类型参数`key`，从而让上层可以通过该参数对编译过程进行控制，例如控制是否仅对部分shader进行编译。
+
+<details>
+<summary>zink_shader_key定义</summary>
+
+```c
+// src/gallium/drivers/zink/zink_shader_keys.h
+struct zink_vs_key {
+   unsigned shader_id;
+   bool clip_halfz;
+};
+
+struct zink_fs_key {
+   unsigned shader_id;
+   //bool flat_shade;
+   bool samples;
+   bool force_dual_color_blend;
+};
+
+struct zink_tcs_key {
+   unsigned shader_id;
+   unsigned vertices_per_patch;
+   uint64_t vs_outputs_written;
+};
+
+/* a shader key is used for swapping out shader modules based on pipeline states,
+ * e.g., if sampleCount changes, we must verify that the fs doesn't need a recompile
+ *       to account for GL ignoring gl_SampleMask in some cases when VK will not
+ * which allows us to avoid recompiling shaders when the pipeline state changes repeatedly
+ */
+struct zink_shader_key {
+   union {
+      /* reuse vs key for now with tes/gs since we only use clip_halfz */
+      struct zink_vs_key vs;
+      struct zink_fs_key fs;
+      struct zink_tcs_key tcs;
+   } key;
+   uint32_t size;
+};
+```
+</details>
+
+- **zink_vs_key**：vertex shader key. 包括参数 `clip-halfz`，应该是为了应对某些需要提升提升深度缓冲效率从而需要裁减深度缓冲范围的情况。因为深度缓冲的一个基本问题就是，越近的物体，Z值的采样越多，精度越高，深度缓冲得到的效果越真实。而远的物体（距离 ZFar 更近），为了不使计算量增大，对Z值的采样（通常是顶点Z值的插值）也就相对稀疏，精度也就低。深度缓冲范围对精度的影响在[这个文档](https://www.khronos.org/opengl/wiki/Depth_Buffer_Precision)中有较为详细介绍。
+- **zink_fs_key**：fragment shader key.
+- **zink_tcs_key**： Tessellation control shader key. [Tessellation control shader](https://www.khronos.org/opengl/wiki/Tessellation_Control_Shader)
+
+zink_shader_key 发挥作用的方式并不是控制编译过程，对`shader`的编译依然是通过同一个接口`nir_to_spirv`完成的。key所控制的是对`nir`的直接修改，通过对`nir`本身进行优化，达到减轻编译工作的目的。
+
+**潜在优化点**：
+是否可以直接对 `spir-v` 的编译结果直接进行 cache 和部分重用，而不是通过修改`nir`，来达到提升编译效率的目的？
+
+**难点**：
+这部分优化需要对 Shader IR 有非常充分的了解。
+
+### src/gallium/drivers/zink/zink_context.c
+对`zink_set_framebuffer_state`进行修改，主要是对状态更新前后 “framebuffer 的采样数是否为1” 这一点是否变化进行了判断，并且以此为依据修改`ctx->dirty_shader_stages`。TODO：作用分析。
+
+另外，该处判断在`zink-wip`分支中进行了进一步完善，直接记录采样数（`rast_samples`，Rasterization Samples）是否发生变化，放在`ctx->gfx_pipeline_state.dirty`里面。TODO：作用分析。
+
+TODO：[glSampleMask](https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/gl_SampleMask.xhtml)概念和作用。
+
+## Vulkan WSI
+[Mike blog: poll()ing For WSI](http://www.supergoodcode.com/poll()ing-for-wsi/)
+
+[Vulkan-Guide/wsi.md](https://github.com/KhronosGroup/Vulkan-Guide/blob/master/chapters/wsi.md)
+
+Window System Integration，窗口集成系统。Vulkan本身是不依赖于窗口系统绘图的，可以在不实际绘制的情况下使用。而真的需要实际绘制的时候，就需要 WSI 扩展来与不同的窗口系统交互。WSI主要包括两部分：
+
+- Surface：一个窗口系统无关的对象，不过创建的时候需要根据实际的 native 窗口系统调用对应的创建接口。
+- SwapChain：与Surface交互，实现双buffer等机制。
+
+WSI的一个重要功能就是提供“何时绘制工作完成了”这个信息，而这对于双缓冲机制是非常重要的。
+
+**双buffer机制**：渲染内容写入backbuffer，显示的图片是frontbuffer。
+
+
+### Zink目前的机制
+Zink虽然目的是作为GL和Vulkan之间的软件驱动层工作，却没有集成Vulkan的WSI系统。这就造成，Zink完全依赖一些驱动前端的方法来获取 “何时可以向image resource绘制” 这个信息。
+
+![WSI工作流程](imgs/wsi_setup.png)
+
+## Shader Compile
+- mesa_compile_shader
+  - mesa_glsl_compile_shader
+
+## TODO
+- 为`src/gallium/drivers/zink/zink_compiler.c/zink_shader_compile`加断点统计执行时间和调用频率。预计结果：heaven可能会对shader进行频繁编译，而glmark2的测试场景单一，编译次数可能极少
+- 如果上述预计结果属实，进一步对比`intel`驱动下`shader`编译的负载情况，是否存在明显的性能差距。
