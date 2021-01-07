@@ -12,6 +12,7 @@ irc channel: `irc://irc.freenode.net/zink`
 
 主要修改内容：
 - 添加对shader key的支持
+- 添加对已缓存gfx program的更新能力
 
 ### src/gallium/drivers/zink/zink_compiler.c
 - 核心函数`zink_shader_compile`
@@ -20,8 +21,33 @@ irc channel: `irc://irc.freenode.net/zink`
 
 为`zink_shader_compile`函数增加`zink_shader_key`类型参数`key`，从而让上层可以通过该参数对编译过程进行控制，例如控制是否仅对部分shader进行编译。
 
+```cpp
+struct zink_fs_key {
+   unsigned shader_id;
+   //bool flat_shade;
+   bool samples;
+};
+
+/* a shader key is used for swapping out shader modules based on pipeline states,
+ * e.g., if sampleCount changes, we must verify that the fs doesn't need a recompile
+ *       to account for GL ignoring gl_SampleMask in some cases when VK will not
+ * which allows us to avoid recompiling shaders when the pipeline state changes repeatedly
+ */
+struct zink_shader_key {
+   union {
+      struct zink_fs_key fs;
+   } key;
+   uint32_t size;
+};
+
+static inline const struct zink_fs_key *zink_fs_key(const struct zink_shader_key *key)
+{
+   return &key->key.fs;
+}
+```
+
 <details>
-<summary>zink_shader_key定义</summary>
+<summary>后续zink-wip分支对zink_shader_key的扩展</summary>
 
 ```c
 // src/gallium/drivers/zink/zink_shader_keys.h
@@ -78,6 +104,31 @@ zink_shader_key 发挥作用的方式并不是控制编译过程，对`shader`�
 另外，该处判断在`zink-wip`分支中进行了进一步完善，直接记录采样数（`rast_samples`，Rasterization Samples）是否发生变化，放在`ctx->gfx_pipeline_state.dirty`里面。TODO：作用分析。
 
 TODO：[glSampleMask](https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/gl_SampleMask.xhtml)概念和作用。
+
+### src/gallium/drivers/zink/zink_draw.c
+`get_gfx_program`中添加对`zink_update_gfx_program`的调用，之前的处理逻辑中，对于已缓存的program，直接忽略不进行编辑。而现在则是不忽略，转而进行`update`操作。
+
+可以认为除了这里的修改，缓存策略也一定做了修改，允许更多地情况下保留`gfx program`缓存。
+
+### src/gallium/drivers/zink/zink_program.c
+在对应头文件中添加了`zink_shader_cache`的声明，从而能够对`shader`进行更复杂的缓存。
+
+```cpp
+struct zink_shader_cache {
+   struct pipe_reference reference;
+   struct hash_table *shader_cache;
+};
+```
+
+`zink_shader_cache`本身是一个hash表，存储的映射关系为`zink_shader_key::VkShaderModule`。`zink_shader_cache`也和shader列表一样作为了一个`zink_gfx_program`的成员。
+
+对原有`update_shader_modules`函数进行修改。
+- 按照pipeline顺序遍历zink_shaders。需要注意的是，所谓的*pipeline顺序*实际上是由shader类型决定的，渲染管线对于不同类型shader的执行顺序是一定的。
+  
+  ![Rendering Pipeline](imgs/RenderingPipeline.png)
+- 
+
+**TODO**：`zink_gfx_program`使用方法。
 
 ## Vulkan WSI
 [Mike blog: poll()ing For WSI](http://www.supergoodcode.com/poll()ing-for-wsi/)
