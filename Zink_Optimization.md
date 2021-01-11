@@ -19,7 +19,7 @@ irc channel: `irc://irc.freenode.net/zink`
 - 功能：将`nir` shader编译成`spir-v` shader，存入缓存文件中，并返回[VkShaderModule](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkShaderModule.html)对象。
 - 注意：Vulkan的IR输入为 spir-v，且不开放直接输入 nir 的接口。OpenGL 的 IR 输出为 nir，且 zink 作为软件驱动层，自然也已 nir 作为 IR 输入，这是 OpenGL 和 Gallium 架构决定的。spir-v 本身是 GLSL 同级的可读高级 IR 语言，所以这里会将结果直接写入缓存文件以供 Vulkan 的渲染管线使用，而不是提交硬件。
 
-为`zink_shader_compile`函数增加`zink_shader_key`类型参数`key`，从而让上层可以通过该参数对编译过程进行控制，例如控制是否仅对部分shader进行编译。
+为`zink_shader_compile`函数增加`zink_shader_key`类型参数`key`，为shader本身添加无法从`IR`中直接获取的信息，依次实现更细粒度的编译功能。
 
 ```cpp
 struct zink_fs_key {
@@ -49,7 +49,7 @@ static inline const struct zink_fs_key *zink_fs_key(const struct zink_shader_key
 <details>
 <summary>后续zink-wip分支对zink_shader_key的扩展</summary>
 
-```c
+```cpp
 // src/gallium/drivers/zink/zink_shader_keys.h
 struct zink_vs_key {
    unsigned shader_id;
@@ -150,7 +150,28 @@ Zink虽然目的是作为GL和Vulkan之间的软件驱动层工作，却没有�
 
 ![WSI工作流程](imgs/wsi_setup.png)
 
-## Shader Compile
+## Shader Compile 着色器编译
+[Wiki: Shader Compilation](https://www.khronos.org/opengl/wiki/Shader_Compilation)
+
+着色器编译指的是将OpenGL着色器脚本语言（GLSL）加载到OpenGL中用作着色器的过程，编译过程的最终输出是 Program Object。
+
+Shader 又可以按照不同阶段分为
+- Vertex Shader
+- Tessellation Shader
+- Geometry Shader
+- Fragment Shader
+- Compute Shader
+
+得到的Program Object可能包含多个阶段的Shader可执行代码。最终执行渲染的时候，只能绑定一个 program object，编译完成后 program object 就成为了一个整体。
+
+多个 Shader 编译为一个 Program Object 的过程类似于多个源文件编译为一个可执行程序的过程：
+- 创建 Shader `GLuint glCreateShader(GLenum shaderType​);`，这里的 `shaderType` 可以指明上述五种Shader类型。创建之后还需要通过`void glShaderSource(GLuint shader​, GLsizei count​, const GLchar **string​, const GLint *length​);`把源码输入。
+- 编译创建的 Shader `void glCompileShader(GLuint shader​);`
+- 为创建的 Shader 设置各类属性，例如Vertex shader input attribute locations, Fragment shader output color numbers, Transform feedback output capturing, Program separation.
+- 创建并连接 Program。`GLuint glCreateProgram();`创建，`void glAttachShader(GLuint program​, GLuint shader​);`链接。链接过程中，是允许同一个shader stage链接多个shader的，但是有一定限制，而且并不推荐这样做。通常情况下，每个 shader stage 都最多有一个 shader。
+
+OpenGL 允许使用多个独立的 Program Object。
+
 - mesa_compile_shader
   - mesa_glsl_compile_shader
 
