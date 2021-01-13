@@ -170,3 +170,36 @@ Vulkan（SPIR-V -> NIR）
   - `void GLAPIENTRY _mesa_CompileShader(GLuint shaderObj)`
 - 
 
+## uniform, attribute, varying 变量
+[blog: GLSL 三种变量类型（uniform，attribute和varying）理解](https://www.jianshu.com/p/eed3ebdad4fb)
+
+### uniform
+`uniform`变量是外部程序传递给shader（通常只有vertex、fragment两种shader）的变量，通过函数`glUniform**()`赋值。称之为`uniform`是因为对于shader而言，这些变量传入之后是只读的，shader自己不能修改这部分变量。有些**uniform**可以被vertex、fragment两种shader共用，有些则不可以。
+
+几个常见的 `uniform` 变量例如
+```cpp
+uniform mat4 viewProjMatrix; //投影+视图矩阵
+uniform mat4 viewMatrix;        //视图矩阵
+uniform vec3 lightPosition;     //光源位置
+```
+
+### attribute
+只能在 vertex shader 中使用，一般用来表示一些顶点的数据，例如：顶点坐标、法线、纹理坐标、顶点颜色等。通过`glBindAttribLocation()`来绑定每个`attribute`变量的位置，通过`glVertexAttributePointer()`为每个`attribute`变量赋值。
+
+### varying变量
+vertex 和 fragment shader 之间传递数据用的，通常是由 vertex shader 修改 varying 变量的值，而 fragment shader 使用修改后的值。应用层不能使用 varying 变量。
+
+## UBO 与 SSBO
+UBO(Uniform Buffer Object)即存储uniform数据的缓冲对象，用于在多个shader program之间共享uniform变量。
+```
+glGenBuffers(1, &ubo_foo)
+glBindBuffer(GL_UNIFORM_BUFFER, ubo_foo)
+```
+
+SSBO(Shader Storage Buffer Object)对应OpenGL中的`GL_SHADER_STORAGE_BUFFER`类型缓冲对象，用于着色器的存储和读取数据。
+
+异同
+- SSBO在功能上类似于UBO，但是容量大得多。UBO大小可以到16KB，而SSBO则可以到GPU的内存极限。
+- GLSL访问SSBO可以写入数据，并且支持原子操作。
+- SSBO支持可变存储，运行时决定block大小，UBO则必须在编译期确定对象大小。
+- SSBO比UBO慢很多。

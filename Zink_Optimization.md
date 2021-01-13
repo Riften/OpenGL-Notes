@@ -175,6 +175,14 @@ OpenGL 允许使用多个独立的 Program Object。
 - mesa_compile_shader
   - mesa_glsl_compile_shader
 
+### NIR_PASS_V
+- 位置：`src/compiler/nir/nir.h` 宏定义
+- 功能：按照传入的
+
 ## TODO
 - 为`src/gallium/drivers/zink/zink_compiler.c/zink_shader_compile`加断点统计执行时间和调用频率。预计结果：heaven可能会对shader进行频繁编译，而glmark2的测试场景单一，编译次数可能极少
 - 如果上述预计结果属实，进一步对比`intel`驱动下`shader`编译的负载情况，是否存在明显的性能差距。
+
+## 其他问题或思路
+### 为什么 Shader 的 Lower Pass 是修改 NIR？
+核心疑问在于，NIR本身是OpenGL输送给驱动层的着色器，是GLSL的编译结果。换句话说，如何执行NIR是硬件驱动的决定的。
