@@ -428,3 +428,12 @@ glClearColor()确保获得透明效果
   - 缺少对错误调用栈的容错性，对于多线程结果无法正确统计，调用栈分析逻辑可能需要改一下
   - 缺少对于着色器编译过程、纹理加载和映射过程的相关打点。
 
+### 纹理接口
+- glGenTextures, _mesa_GenTextures: 生成对象，不包含申请数据存储空间
+- glBindTexture, _mesa_BindTexture：绑定到状态机上，OpenGL所有操作都是对状态机进行操作，想要调用接口进行一些操作就需要先把对象绑到状态机上。
+- glTexParameteri, _mesa_TexParameteri：类似的还有其他`glTexParameter`前缀的接口。为纹理贴图设置各类属性，采样过滤之类。这类接口的作用对象就是状态机上绑定的贴图，所以要先有绑定操作。
+- glTexImage2D, _mesa_TexImage2D: 类似的接口还有`1D`, `3D`。实际导入数据的接口，参数中会有数据和贴图尺寸。
+- 最后需要在调用一次`glBindTexture`把空对象绑定上去实现解绑。
+
+### 纹理映射接口
+TODO
