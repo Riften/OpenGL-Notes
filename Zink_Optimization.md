@@ -177,7 +177,12 @@ OpenGL 允许使用多个独立的 Program Object。
 
 ### NIR_PASS_V
 - 位置：`src/compiler/nir/nir.h` 宏定义
-- 功能：按照传入的
+- 功能：按照传入的钩子函数处理NIR shader
+
+## Lowering Pass
+[Mike Blog: aNIRtomy](https://www.supergoodcode.com/aNIRtomy/)
+
+Lowering Pass 指的是在底层对着色器进行简化或修改，这样的修改可能是兼容性的需要，也可以是优化的需要，例如把无用的变量移除。这个修改的过程使用的是在`mesa/src/compiler/nir/nir.h`中的宏定义`NIR_PASS`。宏定义的第二个参数可以理解为一个回调函数，用于进行实际的NIR处理。
 
 ## TODO
 - 为`src/gallium/drivers/zink/zink_compiler.c/zink_shader_compile`加断点统计执行时间和调用频率。预计结果：heaven可能会对shader进行频繁编译，而glmark2的测试场景单一，编译次数可能极少
@@ -186,3 +191,7 @@ OpenGL 允许使用多个独立的 Program Object。
 ## 其他问题或思路
 ### 为什么 Shader 的 Lower Pass 是修改 NIR？
 核心疑问在于，NIR本身是OpenGL输送给驱动层的着色器，是GLSL的编译结果。换句话说，如何执行NIR是硬件驱动的决定的。
+
+当前的shader key策略中，使用的`NIR_PASS`方法是从mesa公用的compiler库中拿来用的，而不是zink层专门编写的。所以与其说这里zink为了进行lower pass优化而实现`NIR_PASS`方法，不如说是zink为了实现硬件驱动的`NIR_PASS`功能，而实现了shader key这个工具。
+
+在这个基本逻辑下，对shader key进行扩展，核心的任务是找到从gallium架构中拿到相应的状态信息的方法，而不是`NIR_PASS`方法本身的实现。

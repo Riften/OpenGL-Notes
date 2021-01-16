@@ -138,6 +138,9 @@ GLX 是 X Window 的 OpenGL 扩展，实现了 X Client/Server 发送、解析�
 
 简单说，OpenGL的很多函数都是以扩展的形式第一次出现的，而有些扩展后来被发现非常有用，就会被ARB这个组织加上ARB这个标记，意思就是“我们看过了，很棒很不错，哪天可能加到OpenGL的核心特性里”。
 
+## 关于DRM
+Direct Rendering Manager 
+
 # 从功能角度分析 GLX-ST-ZINK-Vulkan架构
 
 ## 架构需要实现的功能包括

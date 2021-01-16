@@ -12,7 +12,7 @@
 -----------------------------------
 |   OpenGL       |       GLX      |
 -----------------------------------
-|   OpenGL       |     GLX/DR12   |
+|   OpenGL       |     GLX/DRI2   |
 | State Tracker  |  State Tracker |
 -----------------------------------
 |        Gallium3D Interface      |
