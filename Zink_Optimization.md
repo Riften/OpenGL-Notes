@@ -195,3 +195,4 @@ Lowering Pass 指的是在底层对着色器进行简化或修改，这样的修
 当前的shader key策略中，使用的`NIR_PASS`方法是从mesa公用的compiler库中拿来用的，而不是zink层专门编写的。所以与其说这里zink为了进行lower pass优化而实现`NIR_PASS`方法，不如说是zink为了实现硬件驱动的`NIR_PASS`功能，而实现了shader key这个工具。
 
 在这个基本逻辑下，对shader key进行扩展，核心的任务是找到从gallium架构中拿到相应的状态信息的方法，而不是`NIR_PASS`方法本身的实现。
+

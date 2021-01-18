@@ -243,6 +243,31 @@ common_deps = [
         include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_vulkan_wsi, inc_vulkan_util],
         dependencies: [dep_vulkan, idep_nir_headers, idep_mesautil, libMesaTracer],
     )
+
+    #/home/songyiran/MesaWorkspace/mesa-zink-12.5/src/amd/vulkan/meson.build
+    libvulkan_radeon = shared_library(
+        'vulkan_radeon',
+        [libradv_files, radv_entrypoints, radv_extensions_c, amd_vk_format_table_c, sha1_h],
+        include_directories : [
+            inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_amd, inc_amd_common, inc_amd_common_llvm, inc_compiler, inc_util, inc_vulkan_wsi,
+        ],
+        link_with : [
+            libamd_common, libamd_common_llvm, libamdgpu_addrlib, libvulkan_wsi,
+        ],
+        dependencies : [
+            dep_llvm, dep_libdrm_amdgpu, dep_thread, dep_elf, dep_dl, dep_m,
+            dep_valgrind, radv_deps, idep_aco,
+            idep_mesautil, idep_nir, idep_vulkan_util, idep_amdgfxregs_h, idep_xmlconfig,libMesaTracer,
+        ],
+        c_args : [no_override_init_args, radv_flags],
+        cpp_args : [radv_flags],
+        link_args : [
+            ld_args_build_id, ld_args_bsymbolic, ld_args_gc_sections, libvulkan_radeon_ld_args,
+        ],
+        link_depends : [libvulkan_radeon_link_depends,],
+        gnu_symbol_visibility : 'hidden',
+        install : true,
+    )
    ```
 
 3. 把头文件`libMesaTracer.h`加到它被调用的位置，当前它被加到了以下几个位置：
@@ -253,6 +278,7 @@ common_deps = [
    - mesa-zink-12.5/src/glx/libMesaTracer.h
    - mesa-zink-12.5/src/gallium/auxiliary/util/libMesaTracer.h
    - mesa-zink-12.5/src/gallium/drivers/zink/libMesaTracer.h
+   - mesa-zink-12.5/src/amd/vulkan/libMesaTracer.h
    <!--use util directly - mesa-zink-12.5/src/gallium/frontends/dri/libMesaTracer.h-->
 
     比起哪里需要挪到哪里，修改`meson.build`中的`include`选项可能是个更明智的方案，但在对`meson`编译工具理解有限的当前，还是希望尽量减少不必要的编译选项修改。
@@ -261,7 +287,29 @@ common_deps = [
    - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/mesa/meson.build: files_libmesa_common
    - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/glx/meson.build: files_libglx
    - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/gallium/auxiliary/meson.build: files_libgallium
+   - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/amd/vulkan/meson.build: libradv_files
    <!-- - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/gallium/frontends/dri/meson.build: files_libdri -->
    
 ## ARB timer query
 OpenGL3.2支持的扩展，Mike在他的[这篇博客](http://www.supergoodcode.com/timestamps/)中提到了zink中对该扩展的实现，[扩展文档](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_timer_query.txt)介绍了该扩展作用和使用方法。
+
+## 比较特定优化前后结果
+
+- Resource object 前后
+- buffer memcpy
+
+### buffer memcpy
+[优化点博客](https://www.supergoodcode.com/differently-cached/)
+
+实际修改的内容是`zink_resource.c/resource_object_create()`，函数最终返回的是`zink_resource_object`结构体，结构体中包含了
+```cpp
+union {
+    VkBuffer buffer;
+    VkImage image;
+};
+```
+即 vulkan 层面的 buffer 和 image 都用的这个结构体。
+
+最终调用来说，追溯到`zink_resource.c/zink_resource_create()`，用来创建给gallium使用的`pipe_resource`。
+
+创建`pipe_resource`的一个重要的用处是在`zink_resource.c/zink_transfer_map()`过程中，用来创建destination。
