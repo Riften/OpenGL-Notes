@@ -299,7 +299,8 @@ OpenGL3.2支持的扩展，Mike在他的[这篇博客](http://www.supergoodcode.
 - buffer memcpy
 
 ### buffer memcpy
-[优化点博客](https://www.supergoodcode.com/differently-cached/)
+- [优化点博客](https://www.supergoodcode.com/differently-cached/)
+- [OpenGL PBO](http://www.songho.ca/opengl/gl_pbo.html)
 
 实际修改的内容是`zink_resource.c/resource_object_create()`，函数最终返回的是`zink_resource_object`结构体，结构体中包含了
 ```cpp
