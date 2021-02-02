@@ -206,3 +206,12 @@ SSBO(Shader Storage Buffer Object)对应OpenGL中的`GL_SHADER_STORAGE_BUFFER`�
 - GLSL访问SSBO可以写入数据，并且支持原子操作。
 - SSBO支持可变存储，运行时决定block大小，UBO则必须在编译期确定对象大小。
 - SSBO比UBO慢很多。
+
+## GTT
+[Graphics Translation Table](https://en.wikipedia.org/wiki/Graphics_address_remapping_table)，图形转换表，用来实现DMA (Direct Memory Access) 的显卡存储。
+
+## 采样器
+[Sampler_Object wiki](https://www.khronos.org/opengl/wiki/Sampler_Object)
+
+## AMD显卡架构
+https://www.cnblogs.com/shoemaker/p/linux_graphics09.html

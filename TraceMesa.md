@@ -289,7 +289,17 @@ common_deps = [
    - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/gallium/auxiliary/meson.build: files_libgallium
    - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/amd/vulkan/meson.build: libradv_files
    <!-- - /home/songyiran/MesaWorkspace/mesa-zink-12.5/src/gallium/frontends/dri/meson.build: files_libdri -->
-   
+
+## radeontop使用方法
+运行glmark2程序的同时将radeontop结果倒入csv文件： `radeontop -d test.csv`
+
+将目录下csv文件中的空格替换为逗号：
+```bash
+sed -i 's/ /,/g' `ls`
+```
+
+使用Excel打开相应csv文件用公式统一计算平均值即可
+
 ## ARB timer query
 OpenGL3.2支持的扩展，Mike在他的[这篇博客](http://www.supergoodcode.com/timestamps/)中提到了zink中对该扩展的实现，[扩展文档](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_timer_query.txt)介绍了该扩展作用和使用方法。
 
