@@ -131,3 +131,15 @@ Image View可以用来载入texture等工作，但是如果想要用作渲染目
 
 ## Render Pass
 Render Pass 渲染通道指明了pipeline和framebuffer之间的关联关系，例如渲染需要多少depth 和 color 的缓冲，如何采样，如何将pipeline结果存入framebuffer。
+
+Vulkan中的Framebuffer本质上是有特定格式设定的`VkImage`对象。
+
+创建`VkRenderPass`需要的是正确设定`VkRenderPassCreateInfo`，而其中的重中之重就在于设定需要用到的`VkAttachmentDescription`，Description可能会有多个，RenderPass本身也可以有Subpass，Description通过fragment shader中的`layout(location = 0) out vec4 outColor`所指明的序号完成对应关系。换句话说在Description中，需要对fragment shader中出现的每个这样的有输入输出的vec指定格式。
+
+需要注意的是，这里只是对需要使用的FrameBuffer进行了描述，而没有真正创建FrameBuffer。
+
+## 管线组装
+最终需要将pipeline中各个部分组织成一个`VkPipeline`
+
+# 绘制
+## FrameBuffer
