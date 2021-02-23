@@ -40,3 +40,13 @@
 - OpenGL调用状态机修改函数 - 修改Gallium状态机
 - OpenGL调用绘制指令 - 根据Gallium状态机的情况，完成整个Command Buffer的构建，提交到队列中执行。
 - OpenGL调用刷新指令 - 借助Swap Chain完成显示和新的Image的获取
+
+# 初始化阶段
+
+# Draw Call 与 Command Buffer 的转化
+
+# Vertex Buffer 相关接口实现
+
+# Uniform 相关接口实现
+
+# 纹理相关接口实现

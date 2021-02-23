@@ -17,3 +17,17 @@ Vulkan中使用Vertex Buffer包括以下几个步骤
   - `vkCmdBindVertexBuffers(command buffer, offset of binding, number of binding, VkBuffer[], read byte offset)`，注意是绑定到**Command Buffer**而不是**Pipeline**，Pipeline中指明的是格式和流程，而Command Buffer则是将实际数据应用到Pipeline中。
 
 ## Staging Buffer
+核心概念：
+- **Host Visable**：可以在代码中访问到，即可以通过CPU访问到。
+- **Device Local**：显卡设备本地内存，无法直接从外部访问到。
+
+前面的内存分配方式分配的内存对于CPU也是可访问的，而对于GPU来说，最高效的内存标志位为`VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT`，而这类GPU显存通常是无法直接通过CPU访问的。
+
+在Vulkan中，如果想要创建只有GPU可以访问的内存并且向其中填充内容，需要首先创建CPU可访问的Staging Buffer，然后通过buffer copy将内存copy到配置为`DEVICE_LOCAL`的Vertex Buffer。
+
+缓存拷贝指令需要提交到支持`VK_QUEUE_TRANSFER_BIT`的队列中，绘图指令所使用的支持`VK_QUEUE_GRAPHICS_BIT`或者`VK_QUEUE_COMPUTE_BIT`的队列都是支持`VK_QUEUE_TRANSFER_BIT`的，不过也可以另外申请队列来进行缓存复制操作。这时候需要将Buffer的`sharingMode`设置为`VK_SHARING_MODE_CONCURRENT`以保证队列之间resource一致性。不过在这里使用的仍然只有`VK_GRAPHICS_BIT`的Queue，所以`sharingMode`仍然是`VK_SHARING_MODE_EXCLUSIVE`。
+
+最终的buffer copy需要调用`vkCmdCopyBuffer`通过Command Buffer提交执行。
+
+## Index Buffer
+简单说就是通过指明顶点在Buffer之中的Index从而实现顶点数据的复用。

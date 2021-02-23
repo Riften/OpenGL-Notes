@@ -18,3 +18,5 @@ Vulkan中VertexBuffer的使用是十分细化的，这体现在两个方面
 - 另一方面面对硬件层，不同的硬件可以提供的memory类型也是不同的，在为`VkBuffer`对象实际分配内存的时候，需要根据`VkBuffer`需求**查询**得到硬件能够提供的内存类型，然后使用满足要求的。
 
 在上述过程中，之所以需要有**查询**步骤，一定程度上就是因为硬件能够提供的memory类型是不一样的。但是当硬件确定时，该过程是可以通过简单的映射来做到的。即可以较少的考虑兼容性，而专注于效率。
+
+另外如果想要让`VkBuffer`可以被多个不同的Queue中的指令共享，需要设置`sharingMode`为`VK_SHARING_MODE_CONCURRENT`，而实际上有些只有一个队列中的指令会用到的`VkBuffer`是可以直接使用`VK_SHARING_MODE_EXCLUSIVE`的，有没有可能在Zink中对合适的`VkBuffer`设置`VK_SHARING_MODE_EXCLUSIVE`。

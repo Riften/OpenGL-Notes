@@ -75,3 +75,5 @@ Vulkan中提交的指令的最终执行是异步的，所以需要额外的锁�
 
 ## 问题
 - Zink怎么解决的swap chain问题？
+- Vertex Buffer使用过程中Staging Buffer的原理和作用是什么？为什么Uniform Buffer不再使用Staging Buffer？
+- Zink如何利用Vulkan异步特性？以UBO为例，Vulkan每次执行Command Buffer都需要UBO，但是在UBO被使用过程中是不可以对其进行修改的。所以Vulkan的通常做法是对每个Command Buffer创建UBO对象，在绘制同时准备UBO中的数据。通常的Vulkan程序中，利用这种异步特性的方法是，创建多个UBO对象（其他对象也是），swap chain能提供几个image的交替渲染，就创建多少个，这样就能保证瓶颈由swap chain的交替策略决定，而不会发生对象访问冲突造成的错误或者额外等待。
