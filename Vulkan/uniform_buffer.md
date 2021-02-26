@@ -6,6 +6,7 @@
 Uniform变量的基本特点是
 - 无法在Shader内部被修改，无法在Program运行过程中修改
 - 无法作为Shader的输入或者输出
+- 可以在绘制不同帧时修改，而不用重新创建缓冲区。
 
 Uniform可以通过`layout`关键字指明位置。在OpenGL中，可以通过`glUniform*`或者`glProgramUniform*`系列接口为其赋值。
 

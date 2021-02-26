@@ -2,6 +2,8 @@
 ## Vulkan设计理念
 和发展时间长、旨在提供便捷API的OpenGL不同，Vulkan面向现代GPU架构实现，提供的API更加针对现代GPU的渲染管线，让程序员能够更加精确的指定GPU行为，同时也减轻Driver开发的负担。也正因如此，Vulkan总体上是**面向对象**的，而不是将渲染过程掩盖在状态机后。
 
+**暴露GPU真正运行情况**是Vulkan的一大设计理念。
+
 *Vulkan中`Vk`开头的是结构体和类，`vk`开头的是函数，`VK_`开头的是常量。*
 
 *Vulkan虽然不同于OpenGL，可以直接拿到特定类型的结构体或者对象，但是许多Vulkan结构体中会包含一个`sType`成员，用于说明结构体类型。这看上去有些没必要，不过这一定程度上是考虑了Vulkan本身的快速迭代特性，[这里](https://stackoverflow.com/questions/36347236/vulkan-what-is-the-point-of-stype-in-vkcreateinfo-structs)对`sType`字段的必要性做了简单的解释。*
@@ -27,6 +29,8 @@
 也可以理解为Image的类型，例如如何理解image中的数据，如何使用其中的数据。FrameBuffer完成了Image和Render Passes之间的绑定关系。
 
 需要注意的是不同Pass并不是完全并行和独立的，Pass之间普遍存在着依赖关系。
+
+Render Pass的存在意义在于，可以让应用程序将一个帧的画面中的高级架构信息传递给驱动，从而让驱动可以更好地决定数据处理的方式。Vulkan中的RenderPass对象包含了一帧画面的结构。
 
 ### Graphic Pipeline
 通过`VkPipeline`设定GPU渲染管线。许多渲染过程都通过`VkPipeline`来设定，例如视点、深度缓冲、着色器等。

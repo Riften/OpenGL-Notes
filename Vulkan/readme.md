@@ -9,6 +9,8 @@
 - [drawing_triangle.md](drawing_triangle.md)：完成绘制三角形基本程序的过程。
 - [gallium_run_vulkan.md](gallium_run_vulkan.md)：Zink如何将Vulkan作为Gallium架构的底层来实现OpenGL，包含OpenGL的设计逻辑、Vulkan与OpenGL的核心区别、Gallium架构的设计理念以及如何充当OpenGL与Vulkan的中间层。
 - [vertex_buffer.md](vertex_buffer.md)：Vulkan中Vertex Buffer的详细使用方法。
+- [uniform_buffer.md](uniform_buffer.md)：Vulkan中Uniform变量的详细使用方法。
+- [texture_mapping.md](texture_mapping.md)：Vulkan中纹理映射的详细使用方法。
 
 # 安装注意事项
 # 一些思路和想法
@@ -20,3 +22,10 @@ Vulkan中VertexBuffer的使用是十分细化的，这体现在两个方面
 在上述过程中，之所以需要有**查询**步骤，一定程度上就是因为硬件能够提供的memory类型是不一样的。但是当硬件确定时，该过程是可以通过简单的映射来做到的。即可以较少的考虑兼容性，而专注于效率。
 
 另外如果想要让`VkBuffer`可以被多个不同的Queue中的指令共享，需要设置`sharingMode`为`VK_SHARING_MODE_CONCURRENT`，而实际上有些只有一个队列中的指令会用到的`VkBuffer`是可以直接使用`VK_SHARING_MODE_EXCLUSIVE`的，有没有可能在Zink中对合适的`VkBuffer`设置`VK_SHARING_MODE_EXCLUSIVE`。
+
+## 优化Pipeline使用
+Vulkan对于每一帧的绘制，都需要创建相应的Command Buffer，并且向其中装入Pipeline。
+
+Vulkan的Pipeline非常固定，任何渲染过程的修改都需要创建新的Pipeline对象。
+
+可以通过`VkPipelineCache`为管线部分过程创建缓存，达到复用的目的。但是如何进行复用，本身是高度定制化的，Zink对Vulkan管线复用能力的应用程度还有待调研。

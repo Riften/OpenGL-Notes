@@ -126,8 +126,13 @@ Image View可以用来载入texture等工作，但是如果想要用作渲染目
 所有上述的部分会被最终组成一个`VkPipeline`，然后作为command提交给command buffer。
 
 ## Shader Modules
+Shader本身在Vulkan中是比较独立的部分，其编译和链接过程可以理解为由单独的编译器进行编译。实际由Vulkan使用的时候已经是bytecode形式的SPIR-V了。
+
+### 创建 VkShaderModule
+调用`vkCreateShaderModule`创建，通过`VkShaderModuleCreateInfo`指明创建信息。
 
 ## Fixed Functions
+除去Shader之外，其他一些必须的渲染过程的配置。
 
 ## Render Pass
 Render Pass 渲染通道指明了pipeline和framebuffer之间的关联关系，例如渲染需要多少depth 和 color 的缓冲，如何采样，如何将pipeline结果存入framebuffer。
