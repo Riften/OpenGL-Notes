@@ -2,6 +2,9 @@
 - [Vulkan Tutorial](https://vulkan-tutorial.com/)
 - [Vulkan Api List](https://vulkan.lunarg.com/doc/view/latest/windows/apispec.html)
 - [Learning Modern 3D Graphics Programming](https://paroj.github.io/gltut/)
+- [OpenGL Api Reference](https://www.khronos.org/registry/OpenGL-Refpages/gl4/)
+- [Gallium3D Documentation](https://dri.freedesktop.org/doxygen/gallium/index.html)
+- [Freedesktop Wiki For Gallium3D](https://www.freedesktop.org/wiki/Software/gallium/)
 - [Vulkan Specification](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html)
 
 # 本仓库文档说明
@@ -11,6 +14,7 @@
 - [vertex_buffer.md](vertex_buffer.md)：Vulkan中Vertex Buffer的详细使用方法。
 - [uniform_buffer.md](uniform_buffer.md)：Vulkan中Uniform变量的详细使用方法。
 - [texture_mapping.md](texture_mapping.md)：Vulkan中纹理映射的详细使用方法。
+- [shader.md](shader.md)：着色器相关知识。
 
 # 安装注意事项
 # 一些思路和想法
@@ -29,3 +33,9 @@ Vulkan对于每一帧的绘制，都需要创建相应的Command Buffer，并且
 Vulkan的Pipeline非常固定，任何渲染过程的修改都需要创建新的Pipeline对象。
 
 可以通过`VkPipelineCache`为管线部分过程创建缓存，达到复用的目的。但是如何进行复用，本身是高度定制化的，Zink对Vulkan管线复用能力的应用程度还有待调研。
+
+## 优化资源复用
+Vulkan中Command Buffer、Semaphore等资源是可以复用的，调研当前Zink对这些资源的复用程度和通常的Vulkan程序的复用程度。
+
+## 减少GPU闲置
+首先得有评估GPU闲置情况的方法。

@@ -10,6 +10,12 @@
 
 *Vulkan许多接口都有一个枚举类型`VkResult`的返回值，该返回值指明了接口执行是否成功以及失败原因等。换句话说，Vulkan本身不是调试友好的，许多调试工作需要设计专门的中间层完成。同样，也不会throw出任何错误，运行时错误需要通过VkResult来手动分析。*
 
+*Vulkan程序需要创建各种类的实例，这些实例一般通过`vkCreateXXX`接口创建。实例的各类属性通常在创建时通过一个`VkCreateXXXInfo`结构体指定。*
+
+*Vulkan中的数组，Vulkan实现自己的slice类，也没有依赖其他库来提供slice相关的接口。所有返回值、参数、成员中的数组都由简单的一个`count`和一个指针来定义。*
+
+*Vulkan中的flag，Vulkan的许多结构体属性或者接口参数中会有flag，在Vulkan中flag通常是以bitmask形式存在的配置项，支持位操作来进行修改。*
+
 ## Vulkan渲染流程
 ### 创建Vulkan Instance
 `VkInstance`指明了应用的一些特性，例如使用的Vk扩展等，是一个和应用相关的对象。在此基础上可以查询得到当前支持的`VkPhysicalDevice`。

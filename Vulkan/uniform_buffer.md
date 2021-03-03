@@ -10,6 +10,12 @@ Uniform变量的基本特点是
 
 Uniform可以通过`layout`关键字指明位置。在OpenGL中，可以通过`glUniform*`或者`glProgramUniform*`系列接口为其赋值。
 
+**补充：Shader中的变量：**
+Shader中的变量包括
+- `in` `out`变量：负责定义shader的输入输出，可以在stage之间共享，一个stage的`out`可以作为另一个stage的`in`
+- 普通变量：可以是`const`也可以是`non-const`，但是都是只在当前脚本文件(stage)中可访问的局部变量。
+- `uniform`
+
 ## Resource Descriptor
 Vulkan使用`Resource Descriptor`实现Uniform变量，descriptor可以看做是Vulkan为shader提供的除了`VkBuffer`以外另一种访问resource的方式。descriptor的使用分为以下三步
 - 在创建Pipeline时声明`descriptor layout`
