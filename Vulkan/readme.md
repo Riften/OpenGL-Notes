@@ -39,3 +39,15 @@ Vulkan中Command Buffer、Semaphore等资源是可以复用的，调研当前Zin
 
 ## 减少GPU闲置
 首先得有评估GPU闲置情况的方法。
+
+## 优化 batch 迭代逻辑
+当前Zink用hash table维护使用中的batch_state，但是在同步机制的协作下不应该是这么笨的方法来维护才对。示例程序中通过Fence的使用，用一个大小为`MAX_FRAMES_IN_FLIGHT`的数组维护了in flight的资源，zink也可以用同样的机制实现才对。
+
+分析hash在zink中的必要性。
+
+## 其他莫名其妙的问题
+```cpp
+if (batch->state->work_count[0] + batch->state->work_count[1] >= 100000)
+      pctx->flush(pctx, NULL, 0);
+```
+这是`zink_draw_vbo`函数中的最后一行，虽然不知道为什么但我觉得这行傻逼一样的代码必有问题。

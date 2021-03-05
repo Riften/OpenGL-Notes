@@ -247,7 +247,7 @@ typedef struct VkCommandPoolCreateInfo {
 Semaphores用来处理队列内或者队列之间操作的同步性，不会直接影响host端的程序运行。
 
 在最简单的三角形绘制场景中，我们需要以下两个Semaphore
-```c
+```cpp
 VkSemaphore imageAvailableSemaphore; // 告知用于渲染的目标image已经获得
 VkSemaphore renderFinishedSemaphore; // 告知渲染已经完成可以将image送显
 ```
@@ -274,7 +274,7 @@ Semaphores的唤醒和等待并不是通过host段直接调用wait或者reset进
 
 **renderFinishedSemaphore**
 
-用于“告知渲染已经完成可以将image送显”的Semaphore提供给了`VkSubmitInfo.pWaitSemaphores*`和`VkPresentInfoKHR.pWaitSemaphores*`，达到的效果是在渲染完成后唤醒，送显操作执行前等待唤醒。
+用于“告知渲染已经完成可以将image送显”的Semaphore提供给了`VkSubmitInfo.pSignalSemaphores*`和`VkPresentInfoKHR.pWaitSemaphores*`，达到的效果是在渲染完成后唤醒，送显操作执行前等待唤醒。
 
 和前面同理，也可以用Fence来实现同样的逻辑。
 
