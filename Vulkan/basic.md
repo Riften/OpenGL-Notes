@@ -23,6 +23,8 @@
 ### 创建VkDevice
 对`VkPhysicalDevice`的抽象，包含详细的硬件信息。`VkDevice`的一个核心作用是提供一系列`VkQueue`，Vulkan中，不同的`VkQueue`支持接受不同的指令，对`VkQueue`的支持也一档程度上代表了硬件的能力。
 
+**vulkan 里的对单个queue 是禁止同一时间有多个线程进行操作的，所以申请多个 queue 能做到多个线程做submit。**
+
 ### 创建 surface 和 swap chain
 `Vulkan`是不依赖于显示的，如果需要渲染到终端则需要借助单独的WSI（Window Interface System），需要通过`VkSurfaceKHR`对象来管理显示终端，通过`VkSwapChainKHR`实现帧缓冲。需要注意的是，WSI相关接口本身不是Vulkan核心的一部分，而是扩展。
 
@@ -87,3 +89,24 @@ Vulkan中提交的指令的最终执行是异步的，所以需要额外的锁�
 - Zink怎么解决的swap chain问题？
 - Vertex Buffer使用过程中Staging Buffer的原理和作用是什么？为什么Uniform Buffer不再使用Staging Buffer？
 - Zink如何利用Vulkan异步特性？以UBO为例，Vulkan每次执行Command Buffer都需要UBO，但是在UBO被使用过程中是不可以对其进行修改的。所以Vulkan的通常做法是对每个Command Buffer创建UBO对象，在绘制同时准备UBO中的数据。通常的Vulkan程序中，利用这种异步特性的方法是，创建多个UBO对象（其他对象也是），swap chain能提供几个image的交替渲染，就创建多少个，这样就能保证瓶颈由swap chain的交替策略决定，而不会发生对象访问冲突造成的错误或者额外等待。
+
+# 其他零碎概念
+## 图元重启 Primitive Restart
+OpenGL3.X支持的特性，简单说通常的绘制是根据VAO/VBO中的值连接起来，完成场景绘制。但是有些时候buffer中的值是属于多个物体，而且物体之间是不相连的，这时候就需要指定一个中断位置，绘制到这里的时候重启绘制，后面的内容是新的物体。
+
+OpenGL示例使用
+```cpp
+// Prepare index buffer data (not shown: vertex buffer data, loading vertex and index buffers)
+GLushort indexData[11] = {
+    0, 1, 2, 3, 4,    // triangle strip ABCDE
+
+    0xFFFF,           // primitive restart index (largest possible GLushort value)
+    
+    5, 6, 7, 8, 9,    // triangle strip FGHIJ
+};
+
+// Draw triangle strips
+glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
+
+glDrawElements(GL_TRIANGLE_STRIP, 11, GL_UNSIGNED_SHORT, 0);
+```

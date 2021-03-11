@@ -17,3 +17,33 @@ Fences本身有`signaled`和`unsignaled`两种状态，其基本使用如下
 - 可以通过host端调用`vkResetFences`把Fence重置为`unsignaled`状态
 - 可以通过host端调用`vkWaitForFences`来等待Fence被唤醒。
 - 可以通过host端调用`vkGetFenceStatus`查询Fence当前状态。
+
+## Semaphore
+[Triangle 程序中对Semaphore的使用](./drawing_triangle.md#同步问题)
+
+## Barrier
+Barrier不是通过signal、wait的方式进行工作，Barrier主要用于处理依赖问题：保证destination使用某个资源之前，source已经完成对该资源的写回。Barrier也可以用于控制指令执行顺序，这类Barrier被称为`Execution Barrier`，只是在现代GPU中，指令的执行结束和资源的实际修改和写回并不是一致的，其间往往存在cache机制，这时候就需要`Memory Barrier`来执行保证资源访问顺序，而不仅仅是指令执行顺序。
+
+
+```cpp
+typedef struct VkMemoryBarrier {
+    VkStructureType    sType;
+    const void*        pNext;
+    VkAccessFlags      srcAccessMask;
+    VkAccessFlags      dstAccessMask;
+} VkMemoryBarrier;
+```
+
+```cpp
+void vkCmdPipelineBarrier(
+    VkCommandBuffer                             commandBuffer,
+    VkPipelineStageFlags                        srcStageMask,
+    VkPipelineStageFlags                        dstStageMask,
+    VkDependencyFlags                           dependencyFlags,
+    uint32_t                                    memoryBarrierCount,
+    const VkMemoryBarrier*                      pMemoryBarriers,
+    uint32_t                                    bufferMemoryBarrierCount,
+    const VkBufferMemoryBarrier*                pBufferMemoryBarriers,
+    uint32_t                                    imageMemoryBarrierCount,
+    const VkImageMemoryBarrier*                 pImageMemoryBarriers);
+```

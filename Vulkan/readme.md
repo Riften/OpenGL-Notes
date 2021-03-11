@@ -32,7 +32,7 @@ Vulkan对于每一帧的绘制，都需要创建相应的Command Buffer，并且
 
 Vulkan的Pipeline非常固定，任何渲染过程的修改都需要创建新的Pipeline对象。
 
-可以通过`VkPipelineCache`为管线部分过程创建缓存，达到复用的目的。但是如何进行复用，本身是高度定制化的，Zink对Vulkan管线复用能力的应用程度还有待调研。
+可以通过`VkPipelineCache`为管线部分过程创建缓存，达到复用的目的。但是如何进行复用，本身是高度定制化的，Zink对Vulkan管线复用能力的应用程度还有待调研。**补充：pipeline cache就是用来加速shader加载的，因为shader即使是spirv这样底层的代码了，执行对应gpu的shader代码还是需要一趟编译变为gpu专用的最优内容，为了节约这个编译时间就搞出了pipeline cache。**
 
 ## 优化资源复用
 Vulkan中Command Buffer、Semaphore等资源是可以复用的，调研当前Zink对这些资源的复用程度和通常的Vulkan程序的复用程度。
@@ -45,9 +45,44 @@ Vulkan中Command Buffer、Semaphore等资源是可以复用的，调研当前Zin
 
 分析hash在zink中的必要性。
 
+## 优化 render_pass 创建逻辑
+`get_render_pass`会在每个batch中调用，而在该函数中每次都会对format等参数进行复杂的查询，按道理这是不需要的。
+
 ## 其他莫名其妙的问题
 ```cpp
 if (batch->state->work_count[0] + batch->state->work_count[1] >= 100000)
       pctx->flush(pctx, NULL, 0);
 ```
 这是`zink_draw_vbo`函数中的最后一行，虽然不知道为什么但我觉得这行傻逼一样的代码必有问题。
+
+```cpp
+/* flush anytime our total batch memory usage is potentially >= 1/10 of total system memory */
+if (ctx->batch.state->resource_size >= screen->total_mem / 10)
+      flush_batch(ctx, true, false);
+```
+在超过系统内存1/10的时候刷新...好像也没什么问题，但是正常来说是这样决定了的吗...大场景岂不是一直刷新。而且这个函数在每次调用draw的时候都会被调用一次，可能造成大量的刷新。
+
+而且除了draw的时候，在执行compute program的时候也会进行这个检查。其实一定程度上可以理解这样做的原因，对于zink来说，是完全不知道绘制相关的语义信息的，哪一部分指令是在绘制一帧，哪一部分指令不属于这一帧，这样的信息都是没有的，所以会出现这种自行判断flush时机的需求。但是正常的逻辑难道不是**限制Frame in flight的数量吗！Fence难道不是用来干这个东西的吗！**
+
+**为什么draw_vbo的流程都会受到图元类型的影响？难道不是映射到vulkan中对应的图元类型，或者设定正确的offset、step，然后绘制就行了吗。**
+
+**TODO:** 在draw_vbo函数中不同的分支加入判断，验证不同效率的绘制场景中走到哪几种分支，是否使用了primitive restart或者primitive convert。以及是否进行了大量由于内存不足而进行的flush。
+
+```cpp
+if (ctx->gfx_pipeline_state.primitive_restart != !!dinfo->primitive_restart)
+      ctx->gfx_pipeline_state.dirty = true;
+```
+`!!`这样的东西作用在整型上面的时候可以保证整型和bool类型比较的正确性，但是这里是俩bool啊。
+
+不管怎么说Zink里用的hash table也忒多了...而且很多是直接用地址作为key，换句话说啥都存。
+
+```cpp
+if (vkCreateFramebuffer(screen->dev, &fci, NULL, &ret) != VK_SUCCESS)
+      return;
+```
+你们zink都是这么做错误处理的？
+
+## TODO
+- Gallium中的Streamout是什么东西？Stream在Gallium架构中的作用是什么？
+- zink结构体和pipe结构体之间互相转换的原理是什么？
+- 函数指针的绑定方式，像`zink_descriptors_update`这样的函数是怎么绑上去的？
