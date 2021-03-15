@@ -6,6 +6,7 @@
 - [Gallium3D Documentation](https://dri.freedesktop.org/doxygen/gallium/index.html)
 - [Freedesktop Wiki For Gallium3D](https://www.freedesktop.org/wiki/Software/gallium/)
 - [Vulkan Specification](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html)
+- [Meson Build System](https://mesonbuild.com/)
 
 # 本仓库文档说明
 - [basic.md](basic.md)：Vulkan基本知识，包括Vulkan的核心概念和设计理念。

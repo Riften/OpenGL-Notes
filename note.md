@@ -141,6 +141,11 @@ GLX 是 X Window 的 OpenGL 扩展，实现了 X Client/Server 发送、解析�
 ## 关于DRM
 Direct Rendering Manager 
 
+## 关于gbm
+[GBM Wikipedia](https://en.wikipedia.org/wiki/Mesa_(computer_graphics)#Generic_Buffer_Management)
+
+Generic Buffer Management，提供分配绑定到Mesa的图形渲染缓冲区的机制的一系列API。
+
 # 从功能角度分析 GLX-ST-ZINK-Vulkan架构
 
 ## 架构需要实现的功能包括
