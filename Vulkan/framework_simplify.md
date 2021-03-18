@@ -14,6 +14,7 @@ Mesa项目的架构总体上可以分为以下几个层次
 - Function table：形如`Driver.OpenglCmd`，`Driver`的成员函数。`Driver`本身是一个函数指针的table，是声明是`mesa/main/mtypes.h/gl_context`的一个类型为`dd_function_table`的成员。`dd_function_table`声明在`src/mesa/main/dd.h`，是一个定义了驱动层所需要实现接口的列表，OpenGL调用通过列表中的函数指针最终传递给驱动。例如`Driver.DrawGallium`
 - Mesa State Tracker：形如`st_draw_gallium`，可以理解为驱动层的入口，实现了Function Table中需要实现的函数指针，在状态机初始化过程中会将state tracker的函数给到function table。
 - Gallium State Tracker：本质上和Mesa State Tracker是一个东西，只是在OpenGL接口扩展过程中Mesa State Tracker逐渐无法满足需求才有了Gallium State Tracker。是理应和Mesa State Tracker合并的抽象层。
+- Gallium驱动实现：对Gallium架构定义的各类接口进行实现，包括context、resource、screen等相关状态机成员和draw等接口。
 
 # 编译模块移除
 整个Mesa项目使用Meson进行编译，编译模块的移除本质上是修改meson编译配置文件。
