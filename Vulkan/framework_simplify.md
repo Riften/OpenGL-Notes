@@ -5,7 +5,7 @@
 
 对整个架构的简化可以分为以下三步：
 - 去除不需要的编译模块，只留下Zink驱动。
-- 以直观的方式将state tracker即以上的层合并为一层接口层，接收参数，直接修改Gallium状态机。
+- 以直观的方式将state tracker即以上的层合并为一层接口层，合并GL状态机和Gallium状态机，接口接收参数，直接修改Gallium状态机。
 - 合并Gallium状态机与Zink状态机，`pipe_context`和`zink_context`中只留下一个。
 
 Mesa项目的架构总体上可以分为以下几个层次
@@ -18,26 +18,119 @@ Mesa项目的架构总体上可以分为以下几个层次
 # 编译模块移除
 整个Mesa项目使用Meson进行编译，编译模块的移除本质上是修改meson编译配置文件。
 
-## Meson 中的 option
+最终各类编译配置会通过以下几种方式对实际编译产生影响
+- 由meson控制编译的依赖项，以dependency的形式控制链接过程
+- 由meson格式化成`-DXXX=XXX`的gcc argument，然后在代码中通过宏控制代码逻辑
+
+## 去除GLES相关模块
+首先将根目录`meson.build`中`gles`相关的配置删掉，主要为`with_gles*`相关配置。
+
+将`src/mapi/meson.build`和`include/meson.build`中由`with_gles`控制的编译选项去掉，这里的编译选项指明的主要是相关头文件的安装情况，移除GLES编译选项之后，可以把下列路径中的头文件源文件也移除：
+- src/mapi/es2api
+- src/mapi/es1api
+- include/GLES
+- include/GLES2
+- include/GLES3
+
+## 去除对于HaikuOS的支持
+
+## 去除不需要的Gallium Frontend
+
+## 移除多余dri
+最终目的仅仅保留基于Vulkan的Zink Driver，而移除`dri`和其他`gallium_dri`。移除的驱动主要包括三类：
+- 硬件驱动
+- Gallium实现的软件驱动
+- vulkan驱动，是vulkan本身的驱动而非基于vulkan实现的驱动，可以由第三方提供
+
+**问题：** arm gpu可以使用zink吗？
+
+### 移除步骤
+
+- 将根目录`meson.build`中`with_dri`设置为false，并将`gallium_drivers`只保留`'zink'`
+- 将根目录`meson.build`中`with_any_vk`设置为false，这里是是否编译特定的vulkan驱动，而我们本身需要的不是vulkan驱动，经过测试可以在不编译任何mesa vulkan驱动的情况下运行zink，zink依赖的vulkan库可以由第三方提供，具体来说`/usr/share/vulkan/icd.d`中的`json`文件指明了不同显卡对应的vulkan驱动目录，然后应用程序会根据这些信息加载不同的链接库。如果在mesa中也进行vulkan编译，则会在`$prefix/share/vulkan`得到同样的`json`文件，但是指明的驱动是mesa编译得到的`libvulkan_xxx.so`
+- 去掉个编译选项对应的子目录`meson.build`中相关编译选项，包括
+  - with_intel_vk: src/intel/meson.build
+  - with_intel_vk: include/meson.build
+  - with_amd_vk: src/amd/meson.build
+  - 各类驱动: src/meson.build
+  - dri硬件驱动：src/mesa/drivers/dri/meson.build
+  - with_gallium_iris: src/loader/meson.build
+  - 除zink外的其他gallium驱动: src/gallium/meson.build
+  - with_gallium_softpipe: src/gallium/frontends/dri/meson.build
+  - 除zink外其他gallium驱动的安装：src/gallium/targets/dri/meson.build
+- 移除不再需要编译的源文件，包括
+  - src/intel/vulkan: mesa为intel设备提供的vulkan驱动实现
+  - include/vulkan/vulkan_intel.h: intel vulkan驱动头文件
+  - src/amd/vulkan: mesa为amd设备提供的vulkan驱动实现
+  - src/amd/compiler: [ACO Compiler](../note.md#aco)
+  - src/mesa/drivers/dri/i915,i965,nouveau,r200,radeon: 硬件驱动实现
+  - src/gallium/winsys; src/gallium/drivers/*(除了zink): 除zink以外其他gallium驱动实现
+  - src/amd,broadcom,etnaviv,freedreno,panfrost,virtio,nouveau: 部分dri在source目录下的库，是驱动的依赖项
+    
+- `glx`最好维持`auto`，但是在`with_gallium`为`true`的时候glx还是会被置为`dri`
+- `drm`（Direct Rendering Manager）处理。drm是mesa项目中广泛存在的一个依赖，然而drm的版本是根据驱动来判断的，zink本身似乎不依赖与drm，但是不排除zink使用的Gallium方法依赖于drm。所以目前不移除drm依赖，但是其版本直接指定一个版本，而不是根据驱动判断。
+
+## 移除多余 Gallium State Tracker
+暂且理解为是为不同Gallium驱动所适配的state tracker，驱动本身都被删了，自然也需要移除，包括根目录下设定的`with_gallium_xvmc`、`with_gallium_omx`、`with_gallium_va`、`with_gallium_xa`、``
+
+### swarst驱动问题
+swarst本身是Mesa提供的一个软渲染库，它可以让CPU运行着色器，以便于在没有显卡的情况下运行OpenGL。[Mesa Software Renderer Wikipedia](https://en.wikipedia.org/wiki/Mesa_(computer_graphics)#Software_renderer)
+
+它的实现在Gallium层也被称为softpipe驱动。
+
+## 最终留下和删除的模块和文件
+- include
+  - GL: OpenGL头文件，最终会被安装到指定的头文件目录
+
+## 移除源码中多余的控制宏
+编译过程中许多选项通过添加argument`-Dxxx`的形式增加宏定义，从而直接控制代码逻辑。对编译选项进行精简后，也需要对源码中这部分参数进行直接移除。
+
+宏 | 编译参数 | meson.build文件 | 源码文件 | 说明
+- | - | - | - | -
+GALLIUM_SOFTPIPE | with_gallium_softpipe | 
+
+## TODO List
+记一下要做的事别回头忘了
+- [x] 把GLES相关的编译选项删掉
+- [x] 写个安全删除文件以及恢复文件的小shell脚本
+- [x] 把GLES相关的文件删了
+- [ ] 移除多余dri
+  - [ ] 找到根目录中的各个`with_dri`参数对编译造成的影响
+  - [ ] 删除多余dri源文件
+  - [ ] 删除dri依赖的硬件库源码
+- [ ] 搞清楚llvm必要性
+- [ ] 减少编译参数，例如with_gallium_zink等不需要判断
+
+# 附录
+## Meson 相关知识
+### Meson 中的 option
 Meson中的option可以通过在build脚本里使用[`value get_option(option_name)`](https://mesonbuild.com/Reference-manual.html#get_option)接口来获取。
 
 Meson有两类Option，一类是Meson直接提供的option，一般是各类路径定义和编译器参数（option列表见[附录](#由Meson直接提供的option)）。另一类是用户自己定义的option，通常通过在项目根目录中的`meson_options.txt`文件声明（mesa option列表见[附录](#mesa-option-list)）。Meson Option的格式和使用见[Meson Doc: Build-options](https://mesonbuild.com/Build-options.html)。
 
-## 去除GLES相关模块
-首先将根目录`meson.build`中`gles`相关的配置删掉，这包括以下几个部分
-- `with_gles*`：设定是否编译gles
-- `shared_glapi`：是否共享gl和gles api
+option可以在setup或者之后通过configure指令设置：
+`meson setup -Doption=value <build-dir>`或者`meson configure <build-dir> -D option=value`
+
+### Meson Argument
+Meson可以通过`add_global_arguments('-DFOO=bar', language : 'c')`或者`add_project_arguments('-DMYPROJ=projname', language : 'c')`类似方式添加编译argument，从而对编译过程进行更加精准的控制。
+
+需要注意的是通过`global`的argumets将会在所有子项目中使用，也没有办法在特定项目中取消。
+
+### Meson subdir
+`subdir('dir')`指令的作用是，进入到子目录`dir`，并且执行里面的`meson.build`。
+
+### Meson install_headers
+`install_headers('foolib.h')`将头文件`foolib.h`安装到系统的头文件目录，默认情况下是`/[install prefix]/include`。这里的`prefix`可以通过直接修改meson的`prefix`参数来修改。
+
+## 核心编译选项解释
+详细可以参考后面 [Mesa Option List](#mesa-option-list)。
+
+### `shared_glapi`
+这里的`shared`是与`static`对应的，即将opengl库编译成动态的还是静态的，默认情况下windows下为静态，其余为动态。
+
+### `with_glx`
 
 
-# TODO List
-记一下要做的事别回头忘了
-- [ ] 把GLES相关的编译选项删掉
-- [x] 写个安全删除文件以及恢复文件的小shell脚本
-- [ ] 把GLES相关的文件删了
-- [ ] 移除多余dri
-  - [ ] 找到根目录中的各个`with_dri`参数对编译造成的影响
-
-# 附录
 ## 由Meson直接提供的option
 <details>
 <summary>

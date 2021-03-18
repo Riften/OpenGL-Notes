@@ -45,6 +45,8 @@ MESA_LOADER_DRIVER_OVERRIDE=zink glxgears -info
 MESA_GL_VERSION_OVERRIDE=3.3
 ```
 
+如果将meson装在了别的地方，可以通过`LD_LIBRARY_PATH=.../x86_64-linux-gnu`来指定库文件位置。
+
 查看当前编译选项
 ```bash
 meson configure build-zink/
@@ -133,18 +135,27 @@ GLX 是 X Window 的 OpenGL 扩展，实现了 X Client/Server 发送、解析�
 
 ![GLX架构图](imgs/aiglx.bmp)
 
-## 关于ARB
+## 一些其他缩写解释
+### ARB
 很多OpenGL函数都会有后缀ARB，实际上这是 *Architecture Review Board* 的缩写。
 
 简单说，OpenGL的很多函数都是以扩展的形式第一次出现的，而有些扩展后来被发现非常有用，就会被ARB这个组织加上ARB这个标记，意思就是“我们看过了，很棒很不错，哪天可能加到OpenGL的核心特性里”。
 
-## 关于DRM
+### DRM
 Direct Rendering Manager 
 
-## 关于gbm
+### gbm
 [GBM Wikipedia](https://en.wikipedia.org/wiki/Mesa_(computer_graphics)#Generic_Buffer_Management)
 
 Generic Buffer Management，提供分配绑定到Mesa的图形渲染缓冲区的机制的一系列API。
+
+### glvnd
+多种驱动的中间调度层，允许在运行时将每个API分配给不同驱动。
+
+### aco
+[ACO News](https://www.phoronix.com/scan.php?page=news_item&px=Mesa-19.3-Lands-RADV-ACO)
+
+AMD COmpiler，有Valve领导创建的针对Radeon显卡进行效率优化的着色器编译器。
 
 # 从功能角度分析 GLX-ST-ZINK-Vulkan架构
 
