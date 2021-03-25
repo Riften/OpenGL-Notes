@@ -157,6 +157,22 @@ Generic Buffer Management，提供分配绑定到Mesa的图形渲染缓冲区的
 
 AMD COmpiler，有Valve领导创建的针对Radeon显卡进行效率优化的着色器编译器。
 
+### lavapipe
+[Blog About lavapipe](https://airlied.blogspot.com/2020/08/vallium-software-swrast-vulkan-layer-faq.html)
+
+是一个在gallium llvmpipe驱动之上构建的vulkan驱动，接受Vulkan API，并将其翻译为Gallium API，并最终借助llvmpipe在CPU上运行。
+
+### llvm
+[Mesa Doc LLVMpipe](https://docs.mesa3d.org/drivers/llvmpipe.html)
+
+简单说是借助LLVM实现的软渲染驱动，支持多CPU并行化。
+
+### rbug
+remote debugger
+
+### dri
+Direct Rendering Infrastructure: 基层直接渲染，本质上是对显示硬件的一种高效存取方式，被X Window广泛使用。
+
 # 从功能角度分析 GLX-ST-ZINK-Vulkan架构
 
 ## 架构需要实现的功能包括

@@ -50,8 +50,3 @@ Shader 的使用使得程序员编写 OpenGL 程序的时候，可以参与到�
 Barrier 本意为屏障，Fence 本意为栅栏。他们意思差不多，都是为了保证一些操作按特定顺序进行。之所以用屏障和栅栏这样的词语，是因为这种保序是以**在Barrier之前提交的指令必须保证先于在Barrier之后提交的指令执行**。
 
 一种常见的 Barrier 是 Memory Barrier，用来让多个CPU协同工作（即多线程系统工作）。
-
-# Gallium3D 实现
-[Gallium3D Documentation](https://dri.freedesktop.org/doxygen/gallium/index.html)
-
-Gallium3D所有对外接口的定义都在`src/gallium/include/pipe/p_context.h`文件中

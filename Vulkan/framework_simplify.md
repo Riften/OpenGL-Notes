@@ -9,12 +9,36 @@
 - 合并Gallium状态机与Zink状态机，`pipe_context`和`zink_context`中只留下一个。
 
 Mesa项目的架构总体上可以分为以下几个层次
+- GL接口层：定义在`include`目录中，经过`mapi/glapi`中实现的调度（Dispatch）层调用到`mesa/main`目录中的mesa库接口（或者GLX protocol指令）。每一个`include`目录中的`glXXXX`都有一个在`mesa/main`目录中对应的`_mesa_XXXX`接口。完整的GL接口列表可以在`mapi/glapi/registry/gl.xml`查看。
 - Mesa接口层：形如`_mesa_OpenglCmd`，是OpenGL接口的直接映射。例如`glDrawArrays - _mesa_DrawArrays`
 - Mesa工具函数：形如`_mesa_opengl_cmd`，通常是在Mesa层对接口进行的一次切分，例如将多个不同的Draw函数用同一个工具函数来实现，只是改变调用过程中的参数。例如`_mesa_DrawArrays - _mesa_draw_arrays`
 - Function table：形如`Driver.OpenglCmd`，`Driver`的成员函数。`Driver`本身是一个函数指针的table，是声明是`mesa/main/mtypes.h/gl_context`的一个类型为`dd_function_table`的成员。`dd_function_table`声明在`src/mesa/main/dd.h`，是一个定义了驱动层所需要实现接口的列表，OpenGL调用通过列表中的函数指针最终传递给驱动。例如`Driver.DrawGallium`
 - Mesa State Tracker：形如`st_draw_gallium`，可以理解为驱动层的入口，实现了Function Table中需要实现的函数指针，在状态机初始化过程中会将state tracker的函数给到function table。
 - Gallium State Tracker：本质上和Mesa State Tracker是一个东西，只是在OpenGL接口扩展过程中Mesa State Tracker逐渐无法满足需求才有了Gallium State Tracker。是理应和Mesa State Tracker合并的抽象层。
 - Gallium驱动实现：对Gallium架构定义的各类接口进行实现，包括context、resource、screen等相关状态机成员和draw等接口。
+
+需要注意的是，`libGL.so`本身只包含接口而不包含驱动实现，mesa编译出来的各个库有以下依赖关系：`libgl <- libglx <- libloader`，而驱动实现是通过`libloader`在运行时加载的，在设置`LIBGL_DEBUG=verbose`运行应用程序时会输出`libGL: MESA-LOADER: dlopen(driver path)`。
+
+## Dispatch
+[Mesa Doc GL Dispatch](https://docs.mesa3d.org/dispatch.html)
+
+Dispatch问题可以理解为一个**调度问题**，决定调用某个gl接口的时候通过什么途径调用到哪个`gl_context`。之所以存在这个问题是因为OpenGL应用可以有多个context，而且glx相关的接口都是context无关的，理论上OpenGL程序中的每个线程都可以有自己的`gl_context`。所以换句话说，dispatch问题是要解决每个线程中调用的gl接口使用的是哪个context的问题。
+
+Mesa实现Dispatch的基本逻辑是，在每个线程中维护两个地址：
+- GL Context 地址：context存储的是所有状态机state信息。
+- Dispatch Table 地址：本质上是一个函数指针的table，包含每个OpenGL接口实际调用到的函数的指针，也就是包含了OpenGL的实际实现。
+
+当前mesa使用的dispatch策略经过了不断优化，其实现统一放在`src/mapi`目录。
+
+## Mesa中不同层之间类继承逻辑
+[CSDN C语言实现面向对象编程](https://blog.csdn.net/onlyshi/article/details/81672279)
+
+Mesa本身是完全通过C编写的，但是Mesa的GL-Gallium-Driver架构又需要类继承等机制。这就牵扯到通过C语言如何进行面向对象编程这样一个基本问题。
+- 封装：结构体封装，类的成员函数则是把原来的方法声明里的`this`指针换成`Type * const var`指针即可。
+- 继承：基类放到继承类第一个数据成员即可（基类实例而不是指针）。此时可以通过强制类型转换把继承类指针转换成基类指针，这是因为继承类指针指向的地址的最前段正是基类数据成员的内存空间。这样相当于完成了公有单继承。![C继承](../imgs/CInherit.png)
+- 多态：C++中提供虚函数机制，基类可以不实现某些机制，而交给具体的继承类实现，通过将不同继承类赋值给基类参数，实现多态。C语言可以直接通过基类中的函数指针实现多态，只是这样调用基类中的继承类函数的时候会很丑陋，一种做法是套一层`static inline`的内联函数，不损失调用开销的情况下让接口好看些。
+
+Mesa不同层之间广泛使用上述封装、继承、多态等方法，实现面向对象编程。
 
 # 编译模块移除
 整个Mesa项目使用Meson进行编译，编译模块的移除本质上是修改meson编译配置文件。
@@ -33,11 +57,12 @@ Mesa项目的架构总体上可以分为以下几个层次
 - include/GLES2
 - include/GLES3
 
-## 去除对于HaikuOS的支持
+## 去除x11之外的平台支持
+wayland是x11基础上新的显示系统，暂且保留。其他windows、haiku、android均移除
 
 ## 去除不需要的Gallium Frontend
 
-## 移除多余dri
+## 移除多余dri driver
 最终目的仅仅保留基于Vulkan的Zink Driver，而移除`dri`和其他`gallium_dri`。移除的驱动主要包括三类：
 - 硬件驱动
 - Gallium实现的软件驱动
@@ -71,36 +96,81 @@ Mesa项目的架构总体上可以分为以下几个层次
 - `glx`最好维持`auto`，但是在`with_gallium`为`true`的时候glx还是会被置为`dri`
 - `drm`（Direct Rendering Manager）处理。drm是mesa项目中广泛存在的一个依赖，然而drm的版本是根据驱动来判断的，zink本身似乎不依赖与drm，但是不排除zink使用的Gallium方法依赖于drm。所以目前不移除drm依赖，但是其版本直接指定一个版本，而不是根据驱动判断。
 
-## 移除多余 Gallium State Tracker
-暂且理解为是为不同Gallium驱动所适配的state tracker，驱动本身都被删了，自然也需要移除，包括根目录下设定的`with_gallium_xvmc`、`with_gallium_omx`、`with_gallium_va`、`with_gallium_xa`、``
-
 ### swarst驱动问题
 swarst本身是Mesa提供的一个软渲染库，它可以让CPU运行着色器，以便于在没有显卡的情况下运行OpenGL。[Mesa Software Renderer Wikipedia](https://en.wikipedia.org/wiki/Mesa_(computer_graphics)#Software_renderer)
 
 它的实现在Gallium层也被称为softpipe驱动。
 
+## 移除多余 Gallium State Tracker
+暂且理解为是为不同Gallium驱动所适配的state tracker，为不同的前端进行服务。驱动本身都被删了，自然也需要移除，包括根目录下设定的`with_gallium_vdpau`、`with_gallium_xvmc`、`with_gallium_omx`、`with_gallium_va`、`with_gallium_xa`、`with_gallium_st_nine`。
+
+然后需要移除`src/gallium/meson.build`中对于这几种gallium前端的编译指令，然后就可以移除`src/gallium/frontends`和`src/gallium/targets`中的相关源码。
+
+## 移除不使用Gallium的旧Mesa驱动代码
+参考[Mesa Source Tree](https://docs.mesa3d.org/sourcetree.html)，mesa源码主目录`src/mesa`中包含大量与不使用Gallium架构的代码，都可以进行移除。
+
+## 移除多余的Gallium编译对象
+我们只需要从Gallium中编译得到`zink_dri.so`，该链接库是通过`src/gallium/targets/dri`编译得到的`libgallium_dri.so`再借由生成脚本得到。除`dri`之外的targets可以移除。
+
+## 移除GL之外的前端库
+
 ## 最终留下和删除的模块和文件
 - include
   - GL: OpenGL头文件，最终会被安装到指定的头文件目录
+- src
+  - compiler: IR 编译器
+  - glx: 使用dri驱动的`libGL.so`
+  - gallium
+    - targets
+      - dri: 编译得到`libgallium_dri.so`，并且执行`zink_dri.so`的生成脚本。
+    - frontends
+      - dri: dri驱动使用的前端接口，提供gallium_state_tracker接口层。
+  - mapi: mesa dispatch层，调度mesa接口所使用的驱动实现和gl_context
+  - loader: `libGL.so`调用的驱动加载库，借助该部分加载`zink_dri.so`，其中包含了gallium层的实现。
+  - mesa
+    - main: mesa_state_tracker的实现，定义了mesa库的gl接口，以此为入口调用到gallium驱动。
 
 ## 移除源码中多余的控制宏
 编译过程中许多选项通过添加argument`-Dxxx`的形式增加宏定义，从而直接控制代码逻辑。对编译选项进行精简后，也需要对源码中这部分参数进行直接移除。
 
 宏 | 编译参数 | meson.build文件 | 源码文件 | 说明
 - | - | - | - | -
-GALLIUM_SOFTPIPE | with_gallium_softpipe | 
+GALLIUM_SOFTPIPE | with_gallium_softpipe | - | - | -
+
+# State Tracker 与 function_table 合并
+`gl_context`对象中有`st_context`对象指针，同时也有`dd_function_table`。function table定义了需要驱动实现的所有函数，在我们需要的架构中，dd_function_table中所有函数都是由`st_xxx`函数实现的，其调用逻辑为
+
+- _mesa_glfunction
+- 需要调用驱动函数时，以gl_context为参数，调用dd_function_table中的函数
+- 实际实现function table的是state_tracker的st_xxx函数，最终完成驱动任务的是pipe_context中的函数。这其中context之间的包含关系为`gl_context <- st_context <- pipe_context`
+
+最简单的简化方式为，去掉function table而直接用state tracker的实现，将pipe_context直接作为gl_context对象进行调用
+
+# Gallium 与 Zink 合并
+## CSO对象合并
+
+# 合并state_tracker与Gallium
+
+**难点：** 会牵扯到loader库的使用。
 
 ## TODO List
 记一下要做的事别回头忘了
 - [x] 把GLES相关的编译选项删掉
 - [x] 写个安全删除文件以及恢复文件的小shell脚本
 - [x] 把GLES相关的文件删了
-- [ ] 移除多余dri
-  - [ ] 找到根目录中的各个`with_dri`参数对编译造成的影响
-  - [ ] 删除多余dri源文件
-  - [ ] 删除dri依赖的硬件库源码
+- [x] 移除多余dri
+  - [x] 找到根目录中的各个`with_dri`参数对编译造成的影响
+  - [x] 删除多余dri源文件
+  - [x] 删除dri依赖的硬件库源码
 - [ ] 搞清楚llvm必要性
 - [ ] 减少编译参数，例如with_gallium_zink等不需要判断
+- [ ] 寻找GL接口到Zink实现的映射方法
+  - [x] dispatch概念和作用
+  - [ ] include目录和mapi目录中头文件关系是什么？？
+- [ ] 架构解释
+  - [ ] 对GL接口进行分类
+  - [ ] 不同类型GL接口到state_tracker的映射
+  - [ ] _glapi_table定义、使用、作用
 
 # 附录
 ## Meson 相关知识
