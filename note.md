@@ -173,6 +173,9 @@ remote debugger
 ### dri
 Direct Rendering Infrastructure: 基层直接渲染，本质上是对显示硬件的一种高效存取方式，被X Window广泛使用。
 
+### xfb
+Transform Feedback: 把Vertex Processing的结果写入buffer对象以便复用。
+
 # 从功能角度分析 GLX-ST-ZINK-Vulkan架构
 
 ## 架构需要实现的功能包括

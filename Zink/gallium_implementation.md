@@ -37,7 +37,7 @@ gallium pipe_context 对每一种CSO对象的create、bind、delete接口进行�
 
 zink zink_context 继承了pipe_context，实现了每一个虚函数，并定义了CSO对象的实现，gallium CSO对象与Zink CSO对象之间的映射关系如下（xx指create-bind-delete三类接口，Option为Gallium对CSO进行配置的参数，Zink CTX Bind为CSO对象在Zink状态机中的绑定点）
 
-Gallium CSO | Gallium Option | Zink CSO | Zink CTX Bind | Details
+Gallium Interface | Gallium Option | Zink CSO | Zink CTX Bind | Details
 - | - | - | - | -
 xx_blend_state | pipe_blend_state | zink_blend_state | gfx_pipeline_state<br /> -> blend_state | -
 xx_sampler_state | pipe_sampler_state | zink_sampler_state | sampler_states[][] | -
@@ -53,16 +53,32 @@ xx_vertex_elements_state | pipe_vertex_element | zink_vertex_elements_state | gf
 - 所有state对象均在create接口中calloc，在delete接口中free，是否可以通过pool机制减少内存分配，用reset替代calloc，用unuse替代free。甚至于是否可以将该工作直接在初始化状态机时完成。
 
 ## 非CSO状态设置
-在GL接口中，除了Create-Bind-Delete形式设置状态外，也有部分直接对状态进行设置的接口，Gallium将这部分接口作为 Parameter-like state 进行了声明，接口形式均为`set_xxx`
+在GL接口中，除了Create-Bind-Delete形式设置状态外，也有部分直接对状态进行设置的接口，Gallium将这部分接口作为 Parameter-like state 进行了声明，接口形式均为`set_xxx`，zink中对应的实现则是`zink_set_xxx`。
 
-<!--## 颜色渲染 color blend
-```cpp
-void * (*create_blend_state)(struct pipe_context *,
-                                const struct pipe_blend_state *);
-```
-创建blend_state。需要注意的是，这里的`pipe_blend_state`是参数而不是返回值，函数的返回值是`void *`，即驱动层自己实现的blend_state的CSO对象。
+这部分接口设置的值通常是简单的变量或者向量，而不像CSO接口包含复杂的option。
 
-zink_create_blend_state-->
+Gallium Interface | Gallium Option | Zink_CTX_Bind | Details
+- | - | - | -
+set_blend_color | pipe_blend_color | blend_constants | -
+set_stencil_ref | pipe_stencil_ref | stencil_ref | -
+set_sample_mask | unsigned sample_mask | gfx_pipeline_state<br />-> sample_mask | 会导致gfx_pipeline_state.dirty
+set_min_samples | unsigned min_samples | 未实现 | -
+set_clip_state | pipe_clip_state | 空函数| -
+set_constant_buffer | shader type&index,<br />pipe_constant_buffer | ubos | 牵扯到先前ubo的invalid
+set_inlinable_constants | shader type, var number, values[] | inlinable_uniforms | zink似乎没记录inlinable_uniform数量？好像是直接`MAX_INLINABLE_UNIFORMS`控制的，但是又没在该接口验证是否越界。
+set_framebuffer_state | pipe_framebuffer_state | fb_state, framebuffer | -
+set_sample_locations | locations | 未实现 | -
+set_polygon_stipple | pipe_poly_stipple | 空函数 | -
+set_scissor_states | pipe_scissor_state | vp_state <br />->scissor_states[] | -
+set_window_rectangles | pipe_scissor_state | 未实现 | -
+set_viewport_states | pipe_viewport_state | vp_state <br />-> viewport_states[],  <br />gfx_pipeline_state<br />-> num_viewports| -
+set_sampler_views | shader type, pipe_sampler_view | sample_views[] | -
+set_tess_state | outer/inner level | default_inner_level, default_outer_level | -
+set_debug_callback | pipe_debug_callback | 未实现 | -
+set_shader_buffers | shader type, index, pipe_shader_buffer, writable | ssbo, di.ssbos | -
+set_hw_atomic_buffers | pipe_shader_buffer | 未实现 | -
+set_shader_images | shader type, index, pipe_image_view | image_views | -
+set_vertex_buffers | pipe_vertex_buffer | vertex_buffers <br />gfx_pipeline_state<br />-> vertex_state_dirty | 需要在pipeline中添加一个barrier
 
 # 绘制
 在Gallium的上层，Draw函数的接口非常繁多，而到了Gallium层，则统一通过`draw_vbo`接口完成绘制。
@@ -74,12 +90,43 @@ zink_create_blend_state-->
 **潜在优化点：** 在dirty为true的情况下，许多对dirty的判断是多余的。
 
 # 资源管理
-**TODO：** stream out 作用和实现。
+## Stream Output Targets & Transform Feedback
+- [Mesa Doc Stream Output Targets](https://docs.mesa3d.org/gallium/context.html#stream-output-targets)
+- [OpenGL Wiki Transform Feedback](https://www.khronos.org/opengl/wiki/Transform_Feedback)
+- [OpenGL Wiki Vertex Processing](https://www.khronos.org/opengl/wiki/Vertex_Processing)
+- [Vulkan Spec Transform Feedback](https://vulkan.lunarg.com/doc/view/1.2.141.2/mac/chunked_spec/chap25.html#vertexpostproc-transform-feedback)
+
+是为了实现OpenGL的Transform Feedback机制，该机制允许将`Vertex Processing`过程的输出存入`Buffer Object`，已达到primitives复用的目的。
+
+**补充：** `Vertex Processing`主要指Vertex Shader、Tessellation、Geometry Shader三个步骤。
+
+和CSO对象不同，Gallium层实现了Stream Out类作为相关接口的返回值和参数
+```cpp
+struct pipe_stream_output_target
+{
+   struct pipe_reference reference;
+   struct pipe_resource *buffer; /**< the output buffer */
+   struct pipe_context *context; /**< context this SO target belongs to */
+
+   unsigned buffer_offset;  /**< offset where data should be written, in bytes */
+   unsigned buffer_size;    /**< how much data is allowed to be written */
+};
+```
+
+`pipe_stream_output_target`中并不包含实际的`vkBuffer`对象，而只包含了xfbBuffer的信息。实际绑定Transform Feedback的过程是在draw过程中，调用`zink_emit_stream_output_targets`函数完成的，该函数基本逻辑是：
+
 
 ## Transfer 和 Map 接口
 
+## Barrier
+**潜在优化点：** 多个Barrier应当尽可能batch使用，然而在zink当前实现中，barrier都是一个一个插入，每插入一个barrier就要调用一次`vkPipelineBarrier`。而Vulkan则明确推荐将多个barrier作为一个batch插入。
+![Batch Barrier](../images/../imgs/batch_barriers.png)
+
 # 送显
 送显包含两部分，一部分是与显示直接相关的`flush`和`surface`相关接口，用来调用刷新以及设定渲染目标等；另一部分是处理同步机制的接口，主要有管理流程之间的fence和管理资源依赖的barrier。
+
+# Query 接口
+初步认为和Conditional Rendering的实现有关。
 
 # Compute 接口
 Compute更多地用于并行计算而非绘图。Compute != Geometry Shader
