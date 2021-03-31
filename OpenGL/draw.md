@@ -100,9 +100,14 @@ Transform Feedback的想法是直接将迭代运算实现为Vertex Processing步
 - 初始化`Buffer[2]`
 - 将两个`Buffer[2]`绑给`xfb[2]`作为Transform Feedback的Buffer对象。
 - loop
-  - 将`Buffer[i]`绑到Input，`Buffer[1-i]`绑到Transform Feedback
-  - 调用Transform Feedback Draw接口，Vertex Processing过程结果存入`Buffer[1-i]`
+  - 将`Buffer[i]`绑到VAO，`Buffer[1-i]`绑到Transform Feedback
+  - if 第一次绘制
+    - 调用普通Draw接口，指定`count`、`first`等绘制信息。
+  - else
+    - 调用Transform Feedback Draw接口，由上一次绘制时绑定在Transform Feedback上的对象提供Vertex Count信息。方法是将`xfb[i]`作为参数，它其中的buffer是上一次绘制时绑定在Transform Feedback中的buffer。
   - i=1-i
+
+**注意：** Transform Feedback Object 在绘制接口中仅仅用于提供Vertex Count信息，实际哪个Buffer作为VAO Buffer，哪个Buffer作为Xfb Buffer是通过修改绑定点上的Buffer做到的。OpenGL中这两个绑定点是`GL_ARRAY_BUFFER`和`GL_TRANSFORM_FEEDBACK`
 
 ## GL接口和使用
 由于Vertex Process的输出可能增删Vertex数量，所以想要使用Transform Feedback的结果作为绘制buffer需要query得到节点数量。为了避免这里的Query开销和将query结果重新传给host的开销，OpenGL提供了Transform Feedback Draw接口，其基本想法是允许直接绘制Transform Feedback的所有结果，而不用额外进行进一步的查询和调用。
@@ -171,6 +176,3 @@ glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
 
 glDrawElements(GL_TRIANGLE_STRIP, 11, GL_UNSIGNED_SHORT, 0);
 ```
-
-## Multi Draw
-[OpenGL Wiki Multi Draw](https://www.khronos.org/opengl/wiki/Vertex_Rendering#Multi-Draw)
