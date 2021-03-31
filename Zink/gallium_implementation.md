@@ -38,7 +38,7 @@ gallium pipe_context 对每一种CSO对象的create、bind、delete接口进行�
 zink zink_context 继承了pipe_context，实现了每一个虚函数，并定义了CSO对象的实现，gallium CSO对象与Zink CSO对象之间的映射关系如下（xx指create-bind-delete三类接口，Option为Gallium对CSO进行配置的参数，Zink CTX Bind为CSO对象在Zink状态机中的绑定点）
 
 Gallium Interface | Gallium Option | Zink CSO | Zink CTX Bind | Details
-- | - | - | - | -
+-- | -- | -- | -- | --
 xx_blend_state | pipe_blend_state | zink_blend_state | gfx_pipeline_state<br /> -> blend_state | -
 xx_sampler_state | pipe_sampler_state | zink_sampler_state | sampler_states[][] | -
 xx_rasterizer_state | pipe_rasterizer_state | zink_rasterizer_state | gfx_pipeline_state <br /> -> rast_state | -
@@ -53,12 +53,12 @@ xx_vertex_elements_state | pipe_vertex_element | zink_vertex_elements_state | gf
 - 所有state对象均在create接口中calloc，在delete接口中free，是否可以通过pool机制减少内存分配，用reset替代calloc，用unuse替代free。甚至于是否可以将该工作直接在初始化状态机时完成。
 
 ## 非CSO状态设置
-在GL接口中，除了Create-Bind-Delete形式设置状态外，也有部分直接对状态进行设置的接口，Gallium将这部分接口作为 Parameter-like state 进行了声明，接口形式均为`set_xxx`，zink中对应的实现则是`zink_set_xxx`。
+在Gallium状态设置接口中，除了Create-Bind-Delete形式设置状态外，也有部分直接对状态进行设置的接口，Gallium将这部分接口作为 Parameter-like state 进行了声明，接口形式均为`set_xxx`，zink中对应的实现则是`zink_set_xxx`。
 
 这部分接口设置的值通常是简单的变量或者向量，而不像CSO接口包含复杂的option。
 
 Gallium Interface | Gallium Option | Zink_CTX_Bind | Details
-- | - | - | -
+-- | -- | -- | --
 set_blend_color | pipe_blend_color | blend_constants | -
 set_stencil_ref | pipe_stencil_ref | stencil_ref | -
 set_sample_mask | unsigned sample_mask | gfx_pipeline_state<br />-> sample_mask | 会导致gfx_pipeline_state.dirty
