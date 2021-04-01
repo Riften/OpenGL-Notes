@@ -85,6 +85,24 @@ set_vertex_buffers | pipe_vertex_buffer | vertex_buffers <br />gfx_pipeline_stat
 
 ![Zink Draw Vbo](../imgs/ZinkDrawVbo.png)
 
+Zink Draw Info 映射
+
+图元类型映射（src/gallium/drivers/zink/zink_program.c/primitive_topology）
+Pipe Primitive | Vulkan Primitive
+--- | ---
+PIPE_PRIM_POINTS | VK_PRIMITIVE_TOPOLOGY_POINT_LIST
+PIPE_PRIM_LINES | VK_PRIMITIVE_TOPOLOGY_LINE_LIST
+PIPE_PRIM_LINE_STRIP | VK_PRIMITIVE_TOPOLOGY_LINE_STRIP
+PIPE_PRIM_TRIANGLES | VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+PIPE_PRIM_TRIANGLE_STRIP | VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP
+PIPE_PRIM_TRIANGLE_FAN | VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN
+PIPE_PRIM_LINE_STRIP_ADJACENCY | VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY
+PIPE_PRIM_LINES_ADJACENCY | VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY
+PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY | VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY
+PIPE_PRIM_TRIANGLES_ADJACENCY | VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY
+PIPE_PRIM_PATCHES | VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+
+
 ## dirty 问题
 
 **潜在优化点：** 在dirty为true的情况下，许多对dirty的判断是多余的。
@@ -121,6 +139,10 @@ struct pipe_stream_output_target
 ## Barrier
 **潜在优化点：** 多个Barrier应当尽可能batch使用，然而在zink当前实现中，barrier都是一个一个插入，每插入一个barrier就要调用一次`vkPipelineBarrier`。而Vulkan则明确推荐将多个barrier作为一个batch插入。
 ![Batch Barrier](../images/../imgs/batch_barriers.png)
+
+**潜在优化点：** Barrier对象只包含了src和dst的访问特性，对于zink而言，特定场景下所需要的Barrier访问特性是相同的，因此可以尝试进行复用。
+
+**潜在优化点：** `zink_resource_buffer_barrier`接口中，destination stage是从dst的AccessFlag映射来的，这造成destination的范围非常广，换句话说，造成了更多的stage依赖于src，从而降低了效率。
 
 # 送显
 送显包含两部分，一部分是与显示直接相关的`flush`和`surface`相关接口，用来调用刷新以及设定渲染目标等；另一部分是处理同步机制的接口，主要有管理流程之间的fence和管理资源依赖的barrier。

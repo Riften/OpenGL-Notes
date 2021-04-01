@@ -135,7 +135,7 @@ void glDrawTransformFeedbackStream(GLenum mode​, GLuint id​, GLuint stream�
 void glDrawArraysIndirect(GLenum mode​, const void *indirect​);
 ```
 
-GL_DRAW_INDIRECT_BUFFER中存放的数据是结构化的绘制信息，其结构体定义如下：
+`GL_DRAW_INDIRECT_BUFFER`中存放的数据是结构化的绘制信息，其结构体定义如下：
 ```cpp
 typedef  struct {
    GLuint  count;
