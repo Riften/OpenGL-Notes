@@ -33,8 +33,29 @@ build, texture, shading, bump, effect2d, pulsar, desktop, buffer, ideas, jellyfi
 ## Scene: build
 是最简单的渲染场景，加载单个无文理模型，单点光源，模型颜色为白色，不透明，漫反射颜色直接用法向乘光线方向得到。
 
+### 测试数据
+驱动 | 参数 | 跑分 | use-vbo<br />true/false
+-- | -- | -- | --
+AMD私有 | use-vbo=false | 5695 | -
+-- | use-vbo=true | 15628 | 2.74
+radeonsi | use-vbo=false | 9640 | -
+-- | use-vbo=true | 16101 | 1.67
+zink未优化 | use-vbo=false | 4434 | -
+-- | use-vbo=true | 6533 | 1.47
+zink0124 | use-vbo=false | 7321 | -
+-- | use-vbo=true | 8160 | 1.11
+
+问题：
+- 为什么zink在这个最简单场景表现比较差？
+- 为什么zink是否使用vbo在这个场景下差别十分小？
+
+拟实验策略：
+
+
 ### 可选参数
 - use-vbo: 默认true
+  - 传入`SceneBuild::useVbo`
+  - 根据其值调用`Mesh::build_vbo`或者`Mesh::build_array`完成模型传入。
 - interleave: 默认false，Whether to interleave vertex attribute data
 - model: 默认horse
 

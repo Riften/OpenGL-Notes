@@ -108,6 +108,122 @@ PIPE_PRIM_PATCHES | VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
 **潜在优化点：** 在dirty为true的情况下，许多对dirty的判断是多余的。
 
 # 资源管理
+难点：
+- Gallium层的资源上传接口十分不直观，有专门的`mgr`类来管理。
+- 资源的上传会牵扯到多线程代码。
+
+## Gallium - pipe_resource
+Gallium层的Vertex Buffer对象，可以用来做VBO、Index Buffer、Texture、Image等对象的Buffer。
+- 基本尺寸信息，包括作为texture/image的(w, h, d)，和作为buffer的array_size。
+- 数据格式信息，PIPE_FORMAT_XXX
+- resource的用处，包括在状态机中的绑定点信息。
+
+## Zink - zink_resource
+![Resource Inherit](../imgs/resource_inherit.png)
+
+Zink Resource 继承了 Pipe Resource。并且额外包括了以下Zink层需要的信息：
+- `zink_resource_object`: 实际的VkBuffer或者VkImage对象及其容量信息。
+  ```cpp
+   struct zink_resource_object {
+      struct pipe_reference reference;
+      union {
+         VkBuffer buffer;
+         VkImage image;
+      };
+
+      union {
+         VkBuffer sbuffer;
+         VkImage simage;
+      };
+      bool storage_init; //layout was set for image
+
+      VkDeviceMemory mem;
+      uint32_t mem_hash;
+      struct mem_key mkey;
+      VkDeviceSize offset, size;
+      unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
+      struct zink_descriptor_refs desc_set_refs;
+
+      struct zink_batch_usage reads;
+      struct zink_batch_usage writes;
+      simple_mtx_t map_mtx;
+      unsigned map_count;
+      void *map;
+      bool is_buffer;
+   }
+  ```
+- Barrier 需要的 Access Stage 与 Access Flag 信息
+  ```cpp
+   VkPipelineStageFlagBits access_stage;
+   VkAccessFlags access;
+   bool unordered_barrier;
+  ```
+- 作为VAO UBO时的绑定信息，或者作为Image时的格式信息
+  ```cpp
+  union {
+      struct {
+         struct util_range valid_buffer_range;
+         uint16_t vbo_bind_count;
+         uint16_t ubo_bind_count[2];
+      };
+      struct {
+         VkFormat format;
+         VkImageLayout layout;
+         VkImageAspectFlags aspect;
+         bool optimal_tiling;
+         uint8_t sampler_binds[PIPE_SHADER_TYPES];
+         uint16_t image_bind_count[2]; //gfx, compute
+      };
+   };
+  ```
+
+## glBindBuffer
+几乎只涉及MESA层，主要需要完成buffer对象和GLuint之间的互相映射。唯一需要用到ST STATE TRACKER层的功能是旧buffer的Delete。
+
+### MESA层
+**_mesa_BindBuffer**: 
+```cpp
+void _mesa_BindBuffer(GLenum target, GLuint buffer){}
+```
+首先要通过`get_buffer_target`获取`gl_context`中的绑定点。绑定点为`gl_buffer_object *`类型的指针。
+
+**bind_buffer_object**
+```cpp
+static void bind_buffer_object(struct gl_context *ctx, struct gl_buffer_object **bindTarget, GLuint buffer){}
+```
+
+**lookup 接口**: 
+
+`_mesa_lookup_bufferobj`，GL层的lookup接口主要是负责找到`GLuint`中存放的实际对象，例如该接口就是返回`gl_buffer_object`。
+
+**reference接口**: 
+
+`_mesa_reference_buffer_object_`，GL层的reference接口负责以下几件事
+- 移除旧的reference，需要释放资源时调用Driver（function table）的响应资源释放接口。
+- 绑定点指针指向的新的对象。由于需要修改的是指针本身的值，所以参数传递的时候需要用二级指针。
+- 完成`GLuint`的映射。
+
+### ST STATE TRACKER层
+**Driver.DeleteBuffer -> st_bufferobj_free**:
+
+
+**_mesa_delete_buffer_object**:
+
+`gl_buffer_object`中资源的释放，主要包括`Data`字段实际分配的内存或显存，`MinMaxCache`中缓存的最大最小index，Debug用的标签`Label`
+
+## glBufferData
+### MESA 层
+**buffer_data**:
+
+### STATE TRACKER 层
+**st_bufferobj_data**
+
+### Gallium 层
+**buffer_subdata**
+
+### Zink 层
+**zink_buffer_subdata**: 使用Vulkan中的Map接口完成host到Device的资源映射，通过memcpy接口完成资源上传。但是Mesa和State Tracker有资源的异步同步等信息，在zink层的反应是其复杂的map函数实现。
+
 ## Stream Output Targets & Transform Feedback
 - [Mesa Doc Stream Output Targets](https://docs.mesa3d.org/gallium/context.html#stream-output-targets)
 - [OpenGL Wiki Transform Feedback](https://www.khronos.org/opengl/wiki/Transform_Feedback)
