@@ -86,6 +86,8 @@ zink中对该接口的实现是`zink_resource_commit`，其核心目标是调用
 ## [Description](https://www.supergoodcode.com/description/)
 基于Descriptor Templates的Descriptor Update和Cache策略。在Vulkan中Descriptor是用于提供Uniform变量以及纹理资源的核心类。
 
+[Vulkan Spec: Descriptor Update Templates](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#VkDescriptorUpdateTemplate)
+
 之前Descriptor Update策略是完全基于Cache的，但是对Cache的维护和更新给CPU带来了更大的开销，而且大多数场景下，Descriptor Cache实际上都很难发挥其缓存作用，写入管线的Descriptor在Host端实际上没有什么复用的需求。
 
 基于此特性，在之前的优化中zink-wip就提供了lazy mode来用非caching的方法进行Descriptor Update。相应的函数是`src/gallium/drivers/zink/zink_descriptors_lazy.czink_descriptors_update_lazy`，表现优于基于cache的方法，虽然在绝大多数场景里都不明显。
